@@ -18,13 +18,15 @@
  */
 package org.jasig.cas.adaptors.generic;
 
+import java.security.GeneralSecurityException;
 import java.util.List;
 
-import org.jasig.cas.authentication.handler.AuthenticationException;
-import org.jasig.cas.authentication.handler.BlockedCredentialsAuthenticationException;
+import org.jasig.cas.authentication.HandlerResult;
+import org.jasig.cas.authentication.PreventedException;
+import org.jasig.cas.authentication.UsernamePasswordCredential;
 import org.jasig.cas.authentication.handler.support.AbstractUsernamePasswordAuthenticationHandler;
-import org.jasig.cas.authentication.principal.UsernamePasswordCredentials;
-
+import org.jasig.cas.authentication.principal.SimplePrincipal;
+import javax.security.auth.login.FailedLoginException;
 import javax.validation.constraints.NotNull;
 
 /**
@@ -36,32 +38,30 @@ import javax.validation.constraints.NotNull;
  * and any AuthenticationManager checking the RejectUsersAuthenticationHandler
  * should not continue checking other Authentication Handlers on the failure of
  * RejectUsersAuthenticationHandler to authenticate someone.
- * 
+ *
  * @author Scott Battaglia
- * @version $Revision$ $Date$
  * @since 3.0
  */
-public class RejectUsersAuthenticationHandler extends
-    AbstractUsernamePasswordAuthenticationHandler {
+public class RejectUsersAuthenticationHandler extends AbstractUsernamePasswordAuthenticationHandler {
 
     /** The collection of users to reject. */
     @NotNull
     private List<String> users;
 
-    protected final boolean authenticateUsernamePasswordInternal(final UsernamePasswordCredentials credentials) throws AuthenticationException {
+    protected final HandlerResult authenticateUsernamePasswordInternal(final UsernamePasswordCredential credential)
+            throws GeneralSecurityException, PreventedException {
 
-        final String transformedUsername = getPrincipalNameTransformer().transform(credentials.getUsername());
-
-        if (this.users.contains(transformedUsername)) {
-            throw new BlockedCredentialsAuthenticationException();
+        final String username = credential.getUsername();
+        if (this.users.contains(username)) {
+            throw new FailedLoginException();
         }
 
-        return true;
+        return createHandlerResult(credential, new SimplePrincipal(username), null);
     }
 
     /**
      * Set the Collection of usernames which we will fail to authenticate.
-     * 
+     *
      * @param users The Collection of usernames we should not authenticate.
      */
     public final void setUsers(final List<String> users) {

@@ -1,0 +1,13 @@
+description = 'Jasig CAS Restlet Integration'
+dependencies {
+  	compile project(':cas-server-core'),
+		    'org.restlet.jee:org.restlet:2.1.0',
+		    'org.springframework:spring-beans:3.2.6.RELEASE'
+    runtime('org.restlet.jee:org.restlet.ext.spring:2.1.0') {
+		exclude(module: 'spring-asm')
+		exclude(module: 'spring-web')
+		exclude(module: 'spring-expression')
+    }
+    runtime 'org.restlet.jee:org.restlet.ext.servlet:2.1.0',
+    		'org.restlet.jee:org.restlet.ext.slf4j:2.1.0'
+}

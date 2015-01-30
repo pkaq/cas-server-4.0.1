@@ -18,136 +18,235 @@
  */
 package org.jasig.cas.adaptors.ldap.services;
 
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+
+import javax.annotation.PostConstruct;
+import javax.validation.constraints.NotNull;
+
 import org.jasig.cas.services.RegisteredService;
-import org.jasig.cas.services.RegisteredServiceImpl;
 import org.jasig.cas.services.ServiceRegistryDao;
+import org.jasig.cas.util.LdapUtils;
+import org.ldaptive.AddOperation;
+import org.ldaptive.AddRequest;
+import org.ldaptive.AttributeModification;
+import org.ldaptive.AttributeModificationType;
+import org.ldaptive.Connection;
+import org.ldaptive.ConnectionFactory;
+import org.ldaptive.DeleteOperation;
+import org.ldaptive.DeleteRequest;
+import org.ldaptive.LdapAttribute;
+import org.ldaptive.LdapEntry;
+import org.ldaptive.LdapException;
+import org.ldaptive.ModifyOperation;
+import org.ldaptive.ModifyRequest;
+import org.ldaptive.Response;
+import org.ldaptive.ResultCode;
+import org.ldaptive.SearchFilter;
+import org.ldaptive.SearchOperation;
+import org.ldaptive.SearchRequest;
+import org.ldaptive.SearchResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.ldap.core.*;
-
-import javax.naming.directory.SearchControls;
-import javax.naming.directory.ModificationItem;
-import javax.validation.constraints.NotNull;
-import java.util.*;
 
 /**
- * Implementation of the ServiceRegistryDao interface which stores the services in a LDAP Directory
+ * Implementation of the ServiceRegistryDao interface which stores the services in a LDAP Directory.
  *
- * @author Siegfried Puchbauer, SPP (http://www.spp.at)
- * @author Scott Battaglia
- *
+ * @author Misagh Moayyed
+ * @author Marvin S. Addison
  */
 public final class LdapServiceRegistryDao implements ServiceRegistryDao {
 
-    private final Logger log = LoggerFactory.getLogger(this.getClass());
+    private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     @NotNull
-    private LdapTemplate ldapTemplate;
+    private ConnectionFactory connectionFactory;
 
     @NotNull
-    private String serviceBaseDn;
-
-    private boolean ignoreMultipleSearchResults = false;
+    private LdapRegisteredServiceMapper ldapServiceMapper = new DefaultLdapServiceMapper();
 
     @NotNull
-    private LdapServiceMapper ldapServiceMapper = new DefaultLdapServiceMapper();
+    private String searchFilter;
 
-    private final SearchControls cachedSearchControls;
+    @NotNull
+    private String loadFilter;
 
-    public LdapServiceRegistryDao() {
-        this.cachedSearchControls = new SearchControls();
-        this.cachedSearchControls.setSearchScope(SearchControls.SUBTREE_SCOPE);
+    @NotNull
+    private SearchRequest searchRequest;
+
+
+    @PostConstruct
+    public void init() {
+        this.searchFilter = '(' + this.ldapServiceMapper.getIdAttribute() +  "={0})";
+        this.loadFilter = "(objectClass=" + this.ldapServiceMapper.getObjectClass() + ')';
     }
 
+    @Override
     public RegisteredService save(final RegisteredService rs) {
-        final RegisteredServiceImpl registeredService = (RegisteredServiceImpl) rs;
-        if (registeredService.getId() != -1) {
-            return update(registeredService);
+        if (rs.getId() != RegisteredService.INITIAL_IDENTIFIER_VALUE) {
+            return update(rs);
         }
-        final DirContextAdapter ctx = this.ldapServiceMapper.createCtx(this.serviceBaseDn, registeredService);
-        final String dn = ctx.getNameInNamespace();
-        registeredService.setId(dn.hashCode());
-        this.ldapServiceMapper.doMapToContext(registeredService, ctx);
-        this.ldapTemplate.bind(ctx.getNameInNamespace(), ctx, null);
-        return registeredService;
+
+        Connection connection = null;
+        try {
+            connection = this.connectionFactory.getConnection();
+            final AddOperation operation = new AddOperation(connection);
+
+            final LdapEntry entry = this.ldapServiceMapper.mapFromRegisteredService(this.searchRequest.getBaseDn(), rs);
+            operation.execute(new AddRequest(entry.getDn(), entry.getAttributes()));
+        } catch (final LdapException e) {
+            logger.error(e.getMessage(), e);
+        } finally {
+            LdapUtils.closeConnection(connection);
+        }
+        return rs;
     }
 
-    public RegisteredService update(final RegisteredServiceImpl registeredService) {
-        final DirContextAdapter ctx = lookupCtx(findDn(this.ldapServiceMapper.getSearchFilter(registeredService.getId()).encode()));
-        if (ctx == null) {
-            return null;
-        }
+    private RegisteredService update(final RegisteredService rs) {
+        Connection searchConnection = null;
+        try {
+            searchConnection = this.connectionFactory.getConnection();
+            final Response<SearchResult> response = searchForServiceById(searchConnection, rs.getId());
+            if (hasResults(response)) {
+                final String currentDn = response.getResult().getEntry().getDn();
 
-        this.ldapServiceMapper.doMapToContext(registeredService, ctx);
+                Connection modifyConnection = null;
+                try {
+                    modifyConnection = this.connectionFactory.getConnection();
+                    final ModifyOperation operation = new ModifyOperation(searchConnection);
 
-        final String dn = ctx.getNameInNamespace();
-        final ModificationItem[] modItems = ctx.getModificationItems();
-        if(log.isDebugEnabled()) {
-            log.debug("Attemting to perform modify operations on " + dn);
-            for (final ModificationItem modItem : modItems) {
-                log.debug(modItem.toString());
+                    final List<AttributeModification> mods = new ArrayList<AttributeModification>();
+
+                    final LdapEntry entry = this.ldapServiceMapper.mapFromRegisteredService(this.searchRequest.getBaseDn(), rs);
+                    for (final LdapAttribute attr : entry.getAttributes()) {
+                        mods.add(new AttributeModification(AttributeModificationType.REPLACE, attr));
+                    }
+                    final ModifyRequest request = new ModifyRequest(currentDn, mods.toArray(new AttributeModification[] {}));
+                    operation.execute(request);
+                } finally {
+                    LdapUtils.closeConnection(modifyConnection);
+                }
             }
+        } catch (final LdapException e) {
+            logger.error(e.getMessage(), e);
+        } finally {
+            LdapUtils.closeConnection(searchConnection);
         }
-        this.ldapTemplate.modifyAttributes(dn, modItems);
-        return registeredService;
+        return rs;
     }
 
-    protected DirContextAdapter lookupCtx(final String dn) {
-        return dn == null ? null : (DirContextAdapter) this.ldapTemplate.lookup(dn);
-    }
-
-    protected String findDn(final String filter) {
-        final List results = this.ldapTemplate.search(this.serviceBaseDn, filter, SearchControls.SUBTREE_SCOPE, new String[0], new ContextMapper() {
-            public Object mapFromContext(final Object ctx) {
-                return ((DirContextAdapter) ctx).getNameInNamespace();
-            }
-        });
-        if (results == null || results.isEmpty()) {
-            return null;
-        } else if (results.size() == 1 || this.ignoreMultipleSearchResults) {
-            return (String) results.get(0);
-        } else {
-            throw new RuntimeException("Multiple results returned by LDAP Server for Filter " + filter);
-        }
-    }
-
+    @Override
     public boolean delete(final RegisteredService registeredService) {
-        final String dn = findDn(this.ldapServiceMapper.getSearchFilter(registeredService.getId()).encode());
+        Connection connection = null;
         try {
-            this.ldapTemplate.unbind(dn, false);
-            return true;
-        } catch (final Exception e) {
-            log.warn("Error deleting Registered Service", e);
-            return false;
+            connection = this.connectionFactory.getConnection();
+
+            final Response<SearchResult> response = searchForServiceById(connection, registeredService.getId());
+            if (hasResults(response)) {
+                final LdapEntry entry = response.getResult().getEntry();
+                final DeleteOperation delete = new DeleteOperation(connection);
+                final DeleteRequest request = new DeleteRequest(entry.getDn());
+                final Response<Void> res = delete.execute(request);
+                return res.getResultCode() == ResultCode.SUCCESS;
+            }
+        } catch (final LdapException e) {
+            logger.error(e.getMessage(), e);
+        } finally {
+            LdapUtils.closeConnection(connection);
         }
+
+        return false;
     }
 
+    @Override
     public List<RegisteredService> load() {
+        Connection connection = null;
+        final List<RegisteredService> list = new LinkedList<RegisteredService>();
         try {
-            return this.ldapTemplate.search(this.serviceBaseDn, this.ldapServiceMapper.getLoadFilter().encode(), this.cachedSearchControls, this.ldapServiceMapper);
-        } catch (final Exception e) {
-            log.error("Exception while loading Registered Services from LDAP Directory...", e);
-            return new ArrayList<RegisteredService>();
+            connection = this.connectionFactory.getConnection();
+            final Response<SearchResult> response =
+                    executeSearchOperation(connection, new SearchFilter(this.loadFilter));
+            if (hasResults(response)) {
+                for (final LdapEntry entry : response.getResult().getEntries()) {
+                    final RegisteredService svc = this.ldapServiceMapper.mapToRegisteredService(entry);
+                    list.add(svc);
+                }
+            }
+        } catch (final LdapException e) {
+            logger.error(e.getMessage(), e);
+        } finally {
+            LdapUtils.closeConnection(connection);
         }
+        return list;
     }
 
+    @Override
     public RegisteredService findServiceById(final long id) {
-        return (RegisteredService) this.ldapTemplate.lookup(findDn(this.ldapServiceMapper.getSearchFilter(id).encode()), this.ldapServiceMapper);
+        Connection connection = null;
+        try {
+            connection = this.connectionFactory.getConnection();
+
+            final Response<SearchResult> response = searchForServiceById(connection, id);
+            if (hasResults(response)) {
+                return this.ldapServiceMapper.mapToRegisteredService(response.getResult().getEntry());
+            }
+        } catch (final LdapException e) {
+            logger.error(e.getMessage(), e);
+        } finally {
+            LdapUtils.closeConnection(connection);
+        }
+
+        return null;
     }
 
-    public void setServiceBaseDN(final String serviceBaseDN) {
-        this.serviceBaseDn = serviceBaseDN;
+    private Response<SearchResult> searchForServiceById(final Connection connection, final long id)
+            throws LdapException {
+
+        final SearchFilter filter = new SearchFilter(this.searchFilter);
+        filter.setParameter(0, id);
+        return executeSearchOperation(connection, filter);
     }
 
-    public void setLdapTemplate(final LdapTemplate ldapTemplate) {
-        this.ldapTemplate = ldapTemplate;
+    private Response<SearchResult> executeSearchOperation(final Connection connection, final SearchFilter filter)
+            throws LdapException {
+
+        final SearchOperation searchOperation = new SearchOperation(connection);
+        final SearchRequest request = newRequest(filter);
+        logger.debug("Using search request {}", request.toString());
+        return searchOperation.execute(request);
     }
 
-    public void setIgnoreMultipleSearchResults(final boolean ignoreMultipleSearchResults) {
-        this.ignoreMultipleSearchResults = ignoreMultipleSearchResults;
+    public void setConnectionFactory(@NotNull final ConnectionFactory factory) {
+        this.connectionFactory = factory;
     }
 
-    public void setLdapServiceMapper(final LdapServiceMapper ldapServiceMapper) {
+    public void setLdapServiceMapper(final LdapRegisteredServiceMapper ldapServiceMapper) {
         this.ldapServiceMapper = ldapServiceMapper;
+    }
+
+    public void setSearchRequest(@NotNull final SearchRequest request) {
+        this.searchRequest = request;
+    }
+
+    private boolean hasResults(final Response<SearchResult> response) {
+        return response.getResult() != null && response.getResult().getEntry() != null;
+    }
+
+    private SearchRequest newRequest(final SearchFilter filter) {
+        final SearchRequest sr = new SearchRequest(this.searchRequest.getBaseDn(), filter);
+        sr.setBinaryAttributes(this.searchRequest.getBinaryAttributes());
+        sr.setDerefAliases(this.searchRequest.getDerefAliases());
+        sr.setSearchEntryHandlers(this.searchRequest.getSearchEntryHandlers());
+        sr.setSearchReferenceHandlers(this.searchRequest.getSearchReferenceHandlers());
+        sr.setFollowReferrals(this.searchRequest.getFollowReferrals());
+        sr.setReturnAttributes(this.searchRequest.getReturnAttributes());
+        sr.setSearchScope(this.searchRequest.getSearchScope());
+        sr.setSizeLimit(this.searchRequest.getSizeLimit());
+        sr.setSortBehavior(this.searchRequest.getSortBehavior());
+        sr.setTimeLimit(this.searchRequest.getTimeLimit());
+        sr.setTypesOnly(this.searchRequest.getTypesOnly());
+        sr.setControls(this.searchRequest.getControls());
+        return sr;
     }
 }

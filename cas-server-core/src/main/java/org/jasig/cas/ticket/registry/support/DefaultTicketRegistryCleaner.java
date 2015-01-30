@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import org.jasig.cas.logout.LogoutManager;
 import org.jasig.cas.ticket.Ticket;
 import org.jasig.cas.ticket.TicketGrantingTicket;
 import org.jasig.cas.ticket.registry.RegistryCleaner;
@@ -53,10 +54,9 @@ import javax.validation.constraints.NotNull;
  * <ul>
  * <li>ticketRegistry - CAS ticket registry.</li>
  * </ul>
- * 
+ *
  * @author Scott Battaglia
  * @author Marvin S. Addison
- * @version $Revision$
  * @since 3.0
  * @see JpaLockingStrategy
  * @see NoOpLockingStrategy
@@ -64,30 +64,34 @@ import javax.validation.constraints.NotNull;
 public final class DefaultTicketRegistryCleaner implements RegistryCleaner {
 
     /** The Commons Logging instance. */
-    private final Logger log = LoggerFactory.getLogger(getClass());
+    private final Logger logger = LoggerFactory.getLogger(getClass());
 
     /** The instance of the TicketRegistry to clean. */
     @NotNull
     private TicketRegistry ticketRegistry;
 
-    /** Execution locking strategy */
+    /** Execution locking strategy. */
     @NotNull
     private LockingStrategy lock = new NoOpLockingStrategy();
 
-    private boolean logUserOutOfServices = true;
+    /** The logout manager. */
+    @NotNull
+    private LogoutManager logoutManager;
 
+    /** If the user must be logged out of the services. */
+    private boolean logUserOutOfServices = true;
 
     /**
      * @see org.jasig.cas.ticket.registry.RegistryCleaner#clean()
-     */ 
+     */
     public void clean() {
-        this.log.info("Beginning ticket cleanup.");
-        this.log.debug("Attempting to acquire ticket cleanup lock.");
+        logger.info("Beginning ticket cleanup.");
+        logger.debug("Attempting to acquire ticket cleanup lock.");
         if (!this.lock.acquire()) {
-            this.log.info("Could not obtain lock.  Aborting cleanup.");
+            logger.info("Could not obtain lock.  Aborting cleanup.");
             return;
         }
-        this.log.debug("Acquired lock.  Proceeding with cleanup.");
+        logger.debug("Acquired lock.  Proceeding with cleanup.");
         try {
             final List<Ticket> ticketsToRemove = new ArrayList<Ticket>();
             final Collection<Ticket> ticketsInCache;
@@ -98,20 +102,20 @@ public final class DefaultTicketRegistryCleaner implements RegistryCleaner {
                 }
             }
 
-            this.log.info(ticketsToRemove.size() + " tickets found to be removed.");
+            logger.info("{} tickets found to be removed.", ticketsToRemove.size());
             for (final Ticket ticket : ticketsToRemove) {
                 // CAS-686: Expire TGT to trigger single sign-out
                 if (this.logUserOutOfServices && ticket instanceof TicketGrantingTicket) {
-                    ((TicketGrantingTicket) ticket).expire();
+                    logoutManager.performLogout((TicketGrantingTicket) ticket);
                 }
                 this.ticketRegistry.deleteTicket(ticket.getId());
             }
         } finally {
-            this.log.debug("Releasing ticket cleanup lock.");
+            logger.debug("Releasing ticket cleanup lock.");
             this.lock.release();
         }
 
-        this.log.info("Finished ticket cleanup.");
+        logger.info("Finished ticket cleanup.");
     }
 
 
@@ -135,12 +139,21 @@ public final class DefaultTicketRegistryCleaner implements RegistryCleaner {
     }
 
     /**
-     * Whether to log users out of services when we remove an expired ticket.  The default is true. Set this to
+     * Whether to logger users out of services when we remove an expired ticket.  The default is true. Set this to
      * false to disable.
      *
-     * @param logUserOutOfServices whether to log the user out of services or not.
+     * @param logUserOutOfServices whether to logger the user out of services or not.
      */
     public void setLogUserOutOfServices(final boolean logUserOutOfServices) {
         this.logUserOutOfServices = logUserOutOfServices;
+    }
+
+    /**
+     * Set the logout manager.
+     *
+     * @param logoutManager the logout manager.
+     */
+    public void setLogoutManager(final LogoutManager logoutManager) {
+        this.logoutManager = logoutManager;
     }
 }

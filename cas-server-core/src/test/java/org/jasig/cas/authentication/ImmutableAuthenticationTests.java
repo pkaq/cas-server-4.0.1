@@ -18,30 +18,74 @@
  */
 package org.jasig.cas.authentication;
 
-import java.util.Date;
+import static org.junit.Assert.*;
 
-import org.jasig.cas.TestUtils;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.security.auth.login.FailedLoginException;
+
+import org.jasig.cas.authentication.handler.support.SimpleTestUsernamePasswordAuthenticationHandler;
+import org.jasig.cas.authentication.principal.SimplePrincipal;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author Scott Battaglia
- * @version $Revision$ $Date$
+ * @author Marvin S. Addison
  * @since 3.0
  */
-public class ImmutableAuthenticationTests extends AbstractAuthenticationTests {
+public class ImmutableAuthenticationTests {
+    private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
-    protected void setUp() throws Exception {
-        super.setUp();
-        this.authentication = new ImmutableAuthentication(TestUtils
-            .getPrincipal(), this.attributes);
-    }
-
-    public void testAuthenticatedDate() {
-        Date dateFromFirstCall = this.authentication.getAuthenticatedDate();
-        Date dateFromSecondCall = this.authentication.getAuthenticatedDate();
-
-        assertNotSame("Dates are the same.", dateFromFirstCall,
-            dateFromSecondCall);
-        assertEquals("Dates are not equal.", dateFromFirstCall,
-            dateFromSecondCall);
+    @Test
+    public void testImmutable() {
+        final AuthenticationHandler authenticationHandler = new SimpleTestUsernamePasswordAuthenticationHandler();
+        final CredentialMetaData credential1 = new BasicCredentialMetaData(new UsernamePasswordCredential());
+        final CredentialMetaData credential2 = new BasicCredentialMetaData(new UsernamePasswordCredential());
+        final List<CredentialMetaData> credentials = new ArrayList<CredentialMetaData>();
+        credentials.add(credential1);
+        credentials.add(credential2);
+        final Map<String, Object> attributes = new HashMap<String, Object>();
+        attributes.put("authenticationMethod", "password");
+        final Map<String, HandlerResult> successes = new HashMap<String, HandlerResult>();
+        successes.put("handler1", new HandlerResult(authenticationHandler, credential1));
+        final Map<String, Class<? extends Exception>> failures = new HashMap<String, Class<? extends Exception>>();
+        failures.put("handler2", FailedLoginException.class);
+        final ImmutableAuthentication auth = new ImmutableAuthentication(
+                new Date(),
+                credentials,
+                new SimplePrincipal("test"),
+                attributes,
+                successes,
+                failures);
+        try {
+            auth.getAuthenticatedDate().setTime(100);
+            fail("Should have failed");
+        } catch (final RuntimeException e) {
+            logger.debug("Setting authenticate date/time failed correctly");
+        }
+        try {
+            auth.getCredentials().add(new BasicCredentialMetaData(new UsernamePasswordCredential()));
+            fail("Should have failed");
+        } catch (final RuntimeException e) {
+            logger.debug("Adding authentication credential metadata failed correctly");
+        }
+        try {
+            auth.getSuccesses().put("test", new HandlerResult(authenticationHandler, credential1));
+            fail("Should have failed");
+        } catch (final RuntimeException e) {
+            logger.debug("Adding authentication success event failed correctly");
+        }
+        try {
+            auth.getFailures().put("test", FailedLoginException.class);
+            fail("Should have failed");
+        } catch (final RuntimeException e) {
+            logger.debug("Adding authentication failure event failed correctly");
+        }
     }
 }

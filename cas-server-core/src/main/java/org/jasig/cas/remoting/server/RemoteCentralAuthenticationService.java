@@ -18,16 +18,22 @@
  */
 package org.jasig.cas.remoting.server;
 
+import java.util.List;
+import java.util.Set;
+
+import javax.validation.ConstraintViolation;
+import javax.validation.Validation;
+import javax.validation.Validator;
+import javax.validation.constraints.NotNull;
+
 import org.jasig.cas.CentralAuthenticationService;
-import org.jasig.cas.authentication.principal.Credentials;
+import org.jasig.cas.authentication.AuthenticationException;
+import org.jasig.cas.authentication.Credential;
 import org.jasig.cas.authentication.principal.Service;
+import org.jasig.cas.logout.LogoutRequest;
 import org.jasig.cas.ticket.TicketException;
 import org.jasig.cas.validation.Assertion;
 import org.springframework.util.Assert;
-
-import javax.validation.*;
-import javax.validation.constraints.NotNull;
-import java.util.Set;
 
 /**
  * Wrapper implementation around a CentralAuthenticationService that does
@@ -41,9 +47,9 @@ import java.util.Set;
  * <ul>
  * <li>centralAuthenticationService - the service layer we are delegating to.</li>
  * </ul>
- * 
+ *
  * @author Scott Battaglia
- * @version $Revision$ $Date$
+
  * @since 3.0
  */
 public final class RemoteCentralAuthenticationService implements CentralAuthenticationService {
@@ -52,65 +58,99 @@ public final class RemoteCentralAuthenticationService implements CentralAuthenti
     @NotNull
     private CentralAuthenticationService centralAuthenticationService;
 
-    /** The validators to check the Credentials. */
+    /** The validators to check the Credential. */
     @NotNull
     private Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
 
     /**
+     * {@inheritDoc}
      * @throws IllegalArgumentException if the Credentials are null or if given
      * invalid credentials.
      */
-    public String createTicketGrantingTicket(final Credentials credentials) throws TicketException {
+    @Override
+    public String createTicketGrantingTicket(final Credential... credentials)
+            throws AuthenticationException, TicketException {
+
         Assert.notNull(credentials, "credentials cannot be null");
         checkForErrors(credentials);
 
         return this.centralAuthenticationService.createTicketGrantingTicket(credentials);
     }
 
-    public String grantServiceTicket(final String ticketGrantingTicketId, final Service service) throws TicketException {
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String grantServiceTicket(final String ticketGrantingTicketId, final Service service)
+            throws TicketException {
         return this.centralAuthenticationService.grantServiceTicket(ticketGrantingTicketId, service);
     }
 
     /**
+     * {@inheritDoc}
      * @throws IllegalArgumentException if given invalid credentials
      */
-    public String grantServiceTicket(final String ticketGrantingTicketId, final Service service, final Credentials credentials) throws TicketException {
+    @Override
+    public String grantServiceTicket(
+            final String ticketGrantingTicketId, final Service service, final Credential... credentials)
+            throws AuthenticationException, TicketException {
+
         checkForErrors(credentials);
 
         return this.centralAuthenticationService.grantServiceTicket(ticketGrantingTicketId, service, credentials);
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public Assertion validateServiceTicket(final String serviceTicketId, final Service service) throws TicketException {
         return this.centralAuthenticationService.validateServiceTicket(serviceTicketId, service);
     }
 
-    public void destroyTicketGrantingTicket(final String ticketGrantingTicketId) {
-        this.centralAuthenticationService.destroyTicketGrantingTicket(ticketGrantingTicketId);
+    /**
+     * {@inheritDoc}
+     * <p>Destroy a TicketGrantingTicket and perform back channel logout. This has the effect of invalidating any
+     * Ticket that was derived from the TicketGrantingTicket being destroyed. May throw an
+     * {@link IllegalArgumentException} if the TicketGrantingTicket ID is null.
+     *
+     * @param ticketGrantingTicketId the id of the ticket we want to destroy
+     * @return the logout requests.
+     */
+    @Override
+    public List<LogoutRequest> destroyTicketGrantingTicket(final String ticketGrantingTicketId) {
+        return this.centralAuthenticationService.destroyTicketGrantingTicket(ticketGrantingTicketId);
     }
 
     /**
+     * {@inheritDoc}
      * @throws IllegalArgumentException if the credentials are invalid.
      */
-    public String delegateTicketGrantingTicket(final String serviceTicketId, final Credentials credentials) throws TicketException {
+    @Override
+    public String delegateTicketGrantingTicket(final String serviceTicketId, final Credential... credentials)
+            throws AuthenticationException, TicketException {
+
         checkForErrors(credentials);
 
         return this.centralAuthenticationService.delegateTicketGrantingTicket(serviceTicketId, credentials);
     }
 
-    private void checkForErrors(final Credentials credentials) {
+    private void checkForErrors(final Credential... credentials) {
         if (credentials == null) {
             return;
         }
-        
-        final Set<ConstraintViolation<Credentials>> errors = this.validator.validate(credentials);
-        if (!errors.isEmpty()) {
-            throw new IllegalArgumentException("Error validating credentials: " + errors.toString());
+
+        for (final Credential c : credentials) {
+            final Set<ConstraintViolation<Credential>> errors = this.validator.validate(c);
+            if (!errors.isEmpty()) {
+                throw new IllegalArgumentException("Error validating credentials: " + errors.toString());
+            }
         }
     }
 
     /**
      * Set the CentralAuthenticationService.
-     * 
+     *
      * @param centralAuthenticationService The CentralAuthenticationService to
      * set.
      */
@@ -121,7 +161,7 @@ public final class RemoteCentralAuthenticationService implements CentralAuthenti
 
     /**
      * Set the list of validators.
-     * 
+     *
      * @param validator The array of validators to use.
      */
     public void setValidator(final Validator validator) {

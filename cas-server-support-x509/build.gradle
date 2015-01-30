@@ -1,0 +1,16 @@
+description = 'Jasig CAS X.509 Client Certificate Support'
+dependencies {
+  	compile project(':cas-server-core'),
+    		'edu.vt.middleware:vt-crypt:2.1.4',
+    		'net.sf.ehcache:ehcache-core:2.3.1',
+     		'org.springframework:spring-expression:3.2.6.RELEASE'
+     		
+    compile('org.springframework.webflow:spring-webflow:2.3.2.RELEASE') {
+		exclude(module: 'commons-logging')
+		exclude(module: 'spring-context')
+		exclude(module: 'spring-web')
+    }
+     
+  testCompile project(':cas-server-support-generic'),
+  			  project(':cas-server-support-legacy')
+}

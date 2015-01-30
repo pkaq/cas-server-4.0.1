@@ -1,0 +1,4 @@
+description = 'Jasig CAS Generic Support'
+dependencies {
+  compile project(':cas-server-core')
+}

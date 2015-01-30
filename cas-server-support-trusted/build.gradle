@@ -1,0 +1,9 @@
+description = 'Jasig CAS Trusted User Support'
+dependencies {
+  compile project(':cas-server-core')
+  compile('org.springframework.webflow:spring-webflow:2.3.2.RELEASE') {
+		exclude(module: 'commons-logging')
+		exclude(module: 'spring-context')
+		exclude(module: 'spring-web')
+    }
+}

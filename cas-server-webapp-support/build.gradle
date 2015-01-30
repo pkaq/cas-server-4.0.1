@@ -1,0 +1,24 @@
+
+description = 'Jasig CAS Web Application support'
+dependencies {
+    compile  'org.springframework.security:spring-security-core:3.2.0.RELEASE',
+		     'org.springframework.security:spring-security-web:3.2.0.RELEASE',
+		     'org.springframework:spring-aop:3.2.6.RELEASE',
+		   	 project(':cas-server-core'),
+		     'org.springframework:spring-context-support:3.2.6.RELEASE',
+		     'org.springframework:spring-expression:3.2.6.RELEASE',
+		     'org.opensymphony.quartz:quartz:1.6.1'
+		     
+    runtime 'com.github.inspektr:inspektr-support-spring:1.0.7.GA',
+    		 project(':cas-server-support-generic'),
+    		 'org.hibernate:hibernate-validator:4.2.0.Final'
+    		 
+    runtime('org.springframework.security:spring-security-config:3.2.0.RELEASE') {
+		exclude(module: 'commons-logging')
+    }
+    
+    testCompile 'org.mockito:mockito-all:1.9.5',
+    			'org.hibernate:hibernate-entitymanager:4.1.0.Final',
+				project(':cas-server-core'),
+				'org.hsqldb:hsqldb:2.0.0'
+}

@@ -20,7 +20,7 @@ package org.jasig.cas.audit.spi;
 
 import org.aspectj.lang.JoinPoint;
 import com.github.inspektr.common.spi.PrincipalResolver;
-import org.jasig.cas.authentication.principal.Credentials;
+import org.jasig.cas.authentication.Credential;
 import org.jasig.cas.ticket.ServiceTicket;
 import org.jasig.cas.ticket.Ticket;
 import org.jasig.cas.ticket.TicketGrantingTicket;
@@ -34,15 +34,14 @@ import org.springframework.security.core.userdetails.UserDetails;
 import javax.validation.constraints.NotNull;
 
 /**
- * PrincipalResolver that can retrieve the username from either the Ticket or from the Credentials.
- * 
+ * PrincipalResolver that can retrieve the username from either the Ticket or from the Credential.
+ *
  * @author Scott Battaglia
- * @version $Revision: 1.1 $ $Date: 2005/08/19 18:27:17 $
  * @since 3.1.2
  *
  */
 public final class TicketOrCredentialPrincipalResolver implements PrincipalResolver {
-    
+
     @NotNull
     private final TicketRegistry ticketRegistry;
 
@@ -61,10 +60,10 @@ public final class TicketOrCredentialPrincipalResolver implements PrincipalResol
     public String resolve() {
         return UNKNOWN_USER;
     }
-    
+
     protected String resolveFromInternal(final JoinPoint joinPoint) {
         final Object arg1 = joinPoint.getArgs()[0];
-        if (arg1 instanceof Credentials) {
+        if (arg1 instanceof Credential) {
            return arg1.toString();
         } else if (arg1 instanceof String) {
             final Ticket ticket = this.ticketRegistry.getTicket((String) arg1);

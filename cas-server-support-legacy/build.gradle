@@ -1,0 +1,5 @@
+description = 'Jasig CAS Legacy Support'
+dependencies {
+  compile project(':cas-server-core'),
+  		  'cas:cas:2.0.12'
+}

@@ -18,11 +18,11 @@
  */
 package org.jasig.cas.ticket.registry;
 
-import java.io.IOException;
 import java.net.Socket;
 import java.util.Arrays;
 import java.util.Collection;
 
+import org.apache.commons.io.IOUtils;
 import org.jasig.cas.ticket.ServiceTicket;
 import org.junit.Assert;
 import org.junit.Assume;
@@ -43,7 +43,6 @@ import static org.mockito.Mockito.withSettings;
  * Unit test for MemCacheTicketRegistry class.
  *
  * @author Middleware Services
- * @version $Revision: $
  */
 @RunWith(Parameterized.class)
 public class MemCacheTicketRegistryTests {
@@ -115,16 +114,10 @@ public class MemCacheTicketRegistryTests {
         try {
             socket = new Socket("127.0.0.1", 11211);
             return true;
-        } catch (Exception e) {
+        } catch (final Exception e) {
             return false;
         } finally {
-            if (socket != null) {
-                try {
-                    socket.close();
-                } catch (IOException e) {
-                    // Ignore errors on close
-                }
-            }
+            IOUtils.closeQuietly(socket);
         }
     }
 }

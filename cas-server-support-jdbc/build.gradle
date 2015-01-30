@@ -1,0 +1,5 @@
+description = 'Jasig CAS JDBC Support'
+dependencies {
+ 	compile project(':cas-server-core'),
+   			'org.springframework:spring-jdbc:3.2.6.RELEASE'
+}

@@ -29,9 +29,6 @@ import java.util.Arrays;
 
 
 /**
- * 
- *
- * @version $Revision$ $Date$
  * @since 3.3.6
  */
 @Aspect
@@ -40,11 +37,11 @@ public class LogAspect {
     @Around("(execution (public * org.jasig.cas..*.*(..))) && !(execution( * org.jasig.cas..*.set*(..)))")
     public Object traceMethod(final ProceedingJoinPoint proceedingJoinPoint) throws Throwable {
         Object returnVal = null;
-        final Logger log = getLog(proceedingJoinPoint);
+        final Logger logger = this.getLog(proceedingJoinPoint);
         final String methodName = proceedingJoinPoint.getSignature().getName();
 
         try {
-            if (log.isTraceEnabled()) {
+            if (logger.isTraceEnabled()) {
                 final Object[] args = proceedingJoinPoint.getArgs();
                 final String arguments;
                 if (args == null || args.length == 0) {
@@ -52,14 +49,13 @@ public class LogAspect {
                 } else {
                     arguments = Arrays.deepToString(args);
                 }
-                log.trace("Entering method [" + methodName + " with arguments [" + arguments + "]");
+                logger.trace("Entering method [{}] with arguments [{}]", methodName, arguments);
             }
             returnVal = proceedingJoinPoint.proceed();
             return returnVal;
         } finally {
-            if (log.isTraceEnabled()) {
-                log.trace("Leaving method [" + methodName + "] with return value [" + (returnVal != null ? returnVal.toString() : "null") + "].");
-            }
+            logger.trace("Leaving method [{}] with return value [{}].", methodName,
+                        (returnVal != null ? returnVal.toString() : "null"));
         }
     }
 

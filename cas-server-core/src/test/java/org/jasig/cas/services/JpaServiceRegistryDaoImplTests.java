@@ -29,9 +29,8 @@ import org.springframework.test.context.junit4.AbstractTransactionalJUnit4Spring
 import static org.junit.Assert.*;
 
 /**
- * 
+ *
  * @author battags
- * @version $Revision: 1.1 $ $Date: 2005/08/19 18:27:17 $
  * @since 3.1
  *
  */
@@ -48,7 +47,7 @@ public class JpaServiceRegistryDaoImplTests extends AbstractTransactionalJUnit4S
         r.setServiceId("testId");
         r.setTheme("theme");
         r.setDescription("description");
-        
+
         final RegisteredService r2 = this.dao.save(r);
         final RegisteredService r3 = this.dao.findServiceById(r2.getId());
 
@@ -64,10 +63,10 @@ public class JpaServiceRegistryDaoImplTests extends AbstractTransactionalJUnit4S
         r.setTheme("theme");
         r.setDescription("description");
         r.setAllowedAttributes(Arrays.asList("Test"));
-        
+
         final RegisteredService r2 = this.dao.save(r);
         final RegisteredService r3 = this.dao.findServiceById(r2.getId());
-        
+
         assertEquals(r, r2);
         assertEquals(r2, r3);
 
@@ -81,20 +80,20 @@ public class JpaServiceRegistryDaoImplTests extends AbstractTransactionalJUnit4S
         r.setServiceId("testId");
         r.setTheme("theme");
         r.setDescription("description");
-        
+
         this.dao.save(r);
-        
+
         final List<RegisteredService> services = this.dao.load();
-        
+
         final RegisteredService r2 = services.get(0);
-        
+
         r.setId(r2.getId());
         r.setTheme("mytheme");
-        
+
         this.dao.save(r);
-        
+
         final RegisteredService r3 = this.dao.findServiceById(r.getId());
-        
+
         assertEquals(r, r2);
         assertEquals(r.getTheme(), r3.getTheme());
     }
@@ -106,21 +105,21 @@ public class JpaServiceRegistryDaoImplTests extends AbstractTransactionalJUnit4S
         r.setServiceId("testId");
         r.setTheme("theme");
         r.setDescription("description");
-        
+
         this.dao.save(r);
-        
+
         final List<RegisteredService> services = this.dao.load();
-        
+
         final RegisteredService r2 = services.get(0);
-        
+
         r.setId(r2.getId());
         r.setTheme("mytheme");
         r.setAllowedAttributes(Arrays.asList("Test"));
-        
+
         this.dao.save(r);
-        
+
         final RegisteredService r3 = this.dao.findServiceById(r.getId());
-        
+
         assertEquals(r, r2);
         assertEquals(r.getTheme(), r3.getTheme());
 

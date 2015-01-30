@@ -1,0 +1,25 @@
+apply plugin: 'war'
+apply plugin: 'checkstyle'
+
+jar.enabled = true
+description = 'Jasig CAS Web Application'
+ //防止乱码
+[ compileJava, compileTestJava ]*.options*.encoding = 'UTF-8'
+
+checkstyle {
+  configFile = file("/checkstyle-rules.xml")
+}
+
+dependencies {
+ 	compile  project(':cas-server-webapp-support'),
+ 			 project(':cas-server-support-jdbc'),
+     		 'com.alibaba:druid:1.0.11'
+		     
+    runtime  'org.springframework:spring-expression:3.2.6.RELEASE',
+		     'javax.servlet:jstl:1.1.2',
+		     'taglibs:standard:1.1.2',
+		     'org.jasig.cas:cas-server-security-filter:2.0.0'
+		     
+	//本地依赖
+    compile fileTree(dir: "lib", include: "*.jar")
+}

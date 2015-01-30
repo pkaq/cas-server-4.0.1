@@ -19,6 +19,7 @@
 package org.jasig.cas.ticket;
 
 import java.util.List;
+import java.util.Map;
 
 import org.jasig.cas.authentication.Authentication;
 import org.jasig.cas.authentication.principal.Service;
@@ -27,9 +28,9 @@ import org.jasig.cas.authentication.principal.Service;
  * Interface for a ticket granting ticket. A TicketGrantingTicket is the main
  * access into the CAS service layer. Without a TicketGrantingTicket, a user of
  * CAS cannot do anything.
- * 
+ *
  * @author Scott Battaglia
- * @version $Revision$ $Date$
+
  * @since 3.0
  */
 public interface TicketGrantingTicket extends Ticket {
@@ -39,16 +40,27 @@ public interface TicketGrantingTicket extends Ticket {
 
     /**
      * Method to retrieve the authentication.
-     * 
+     *
      * @return the authentication
      */
     Authentication getAuthentication();
 
     /**
+     * Gets a list of supplemental authentications associated with this ticket.
+     * A supplemental authentication is one other than the one used to create the ticket,
+     * for example, a forced authentication that happens after the beginning of a CAS SSO session.
+     *
+     * @return Non-null list of supplemental authentications.
+     */
+    List<Authentication> getSupplementalAuthentications();
+
+    /**
      * Grant a ServiceTicket for a specific service.
-     * 
+     *
      * @param id The unique identifier for this ticket.
      * @param service The service for which we are granting a ticket
+     * @param expirationPolicy the expiration policy.
+     * @param credentialsProvided if the credentials are provided.
      * @return the service ticket granted to a specific service for the
      * principal of the TicketGrantingTicket
      */
@@ -56,25 +68,42 @@ public interface TicketGrantingTicket extends Ticket {
         ExpirationPolicy expirationPolicy, boolean credentialsProvided);
 
     /**
-     * Explicitly expire a ticket.  This method will log out of any service associated with the
-     * Ticket Granting Ticket.
-     * 
+     * Gets an immutable map of service ticket and services accessed by this ticket-granting ticket.
+     *
+     * @return an immutable map of service ticket and services accessed by this ticket-granting ticket.
+    */
+    Map<String, Service> getServices();
+
+    /**
+     * Remove all services of the TGT (at logout).
      */
-    void expire();
+    void removeAllServices();
+
+    /**
+     * Mark a ticket as expired.
+     */
+    void markTicketExpired();
 
     /**
      * Convenience method to determine if the TicketGrantingTicket is the root
      * of the hierarchy of tickets.
-     * 
+     *
      * @return true if it has no parent, false otherwise.
      */
     boolean isRoot();
 
     /**
-     * Method to retrieve the chained list of Authentications for this
-     * TicketGrantingTicket.
-     * 
-     * @return the list of principals
+     * Gets the ticket-granting ticket at the root of the ticket hierarchy.
+     *
+     * @return Non-null root ticket-granting ticket.
+     */
+    TicketGrantingTicket getRoot();
+
+    /**
+     * Gets all authentications ({@link #getAuthentication()}, {@link #getSupplementalAuthentications()}) from this
+     * instance and all dependent tickets that reference this one.
+     *
+     * @return Non-null list of authentication associated with this ticket in leaf-first order.
      */
     List<Authentication> getChainedAuthentications();
 }

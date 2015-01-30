@@ -1,0 +1,6 @@
+description = 'Jasig CAS Client Protocols Support using pac4j'
+dependencies {
+ 	 compile project(':cas-server-core'),
+   			 'org.pac4j:pac4j-core:1.4.1'
+    testCompile 'org.pac4j:pac4j-oauth:1.4.1'
+}

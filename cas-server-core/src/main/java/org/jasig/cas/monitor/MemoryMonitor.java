@@ -25,10 +25,10 @@ package org.jasig.cas.monitor;
  * @since 3.5.0
  */
 public class MemoryMonitor implements Monitor<MemoryStatus> {
-   
+
     /** Default percent free memory warning threshold. */
     public static final int DEFAULT_FREE_MEMORY_WARN_THRESHOLD = 10;
-   
+
     /** Percent free memory warning threshold. */
     private long freeMemoryWarnThreshold = DEFAULT_FREE_MEMORY_WARN_THRESHOLD;
 
@@ -47,12 +47,14 @@ public class MemoryMonitor implements Monitor<MemoryStatus> {
 
 
     /** {@inheritDoc} */
+    @Override
     public String getName() {
         return MemoryMonitor.class.getSimpleName();
     }
 
 
     /** {@inheritDoc} */
+    @Override
     public MemoryStatus observe() {
         final StatusCode code;
         final long free = Runtime.getRuntime().freeMemory();

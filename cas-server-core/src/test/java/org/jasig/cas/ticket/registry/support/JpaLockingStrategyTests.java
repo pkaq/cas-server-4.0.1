@@ -41,14 +41,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.simple.SimpleJdbcTemplate;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.orm.jpa.SharedEntityManagerCreator;
 import org.springframework.test.annotation.IfProfileValue;
 import org.springframework.test.annotation.ProfileValueSourceConfiguration;
 import org.springframework.test.annotation.SystemProfileValueSource;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
-import org.springframework.test.jdbc.SimpleJdbcTestUtils;
+import org.springframework.test.jdbc.JdbcTestUtils;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
@@ -58,7 +58,6 @@ import org.springframework.transaction.support.TransactionTemplate;
  * Unit test for {@link JpaLockingStrategy}.
  *
  * @author Marvin S. Addison
- * @version $Revision: $
  *
  */
 @RunWith(SpringJUnit4ClassRunner.class)
@@ -73,27 +72,27 @@ public class JpaLockingStrategyTests implements InitializingBean {
 
     @Autowired
     private PlatformTransactionManager txManager;
-    
+
     @Autowired
     private EntityManagerFactory factory;
-    
-    private SimpleJdbcTemplate simpleJdbcTemplate;
-    
+
+    private JdbcTemplate simpleJdbcTemplate;
+
     /**
-     * Set the datasource.
+     * Set the dataSource.
      */
     @Autowired
     public void setDataSource(final DataSource dataSource) {
-        this.simpleJdbcTemplate = new SimpleJdbcTemplate(dataSource);
+        this.simpleJdbcTemplate = new JdbcTemplate(dataSource);
     }
-    
+
     /**
      * One-time test initialization.
      *
      * @throws Exception On setup errors.
      */
     public void afterPropertiesSet() throws Exception {
-        SimpleJdbcTestUtils.deleteFromTables(simpleJdbcTemplate, "locks");
+        JdbcTestUtils.deleteFromTables(simpleJdbcTemplate, "locks");
     }
 
     /**
@@ -107,11 +106,11 @@ public class JpaLockingStrategyTests implements InitializingBean {
         final String uniqueId = appId + "-1";
         final LockingStrategy lock = newLockTxProxy(appId, uniqueId, JpaLockingStrategy.DEFAULT_LOCK_TIMEOUT);
         try {
-	        assertTrue(lock.acquire());
-	        assertEquals(uniqueId, getOwner(appId));
-	        lock.release();
-	        assertNull(getOwner(appId));
-        } catch (Exception e) {
+            assertTrue(lock.acquire());
+            assertEquals(uniqueId, getOwner(appId));
+            lock.release();
+            assertNull(getOwner(appId));
+        } catch (final Exception e) {
             logger.debug("testAcquireAndRelease produced an error", e);
             fail("testAcquireAndRelease failed");
         }
@@ -136,7 +135,7 @@ public class JpaLockingStrategyTests implements InitializingBean {
             assertEquals(uniqueId, getOwner(appId));
             lock.release();
             assertNull(getOwner(appId));
-        } catch (Exception e) {
+        } catch (final Exception e) {
             logger.debug("testLockExpiration produced an error", e);
             fail("testLockExpiration failed");
         }
@@ -151,12 +150,12 @@ public class JpaLockingStrategyTests implements InitializingBean {
         final String uniqueId = appId + "-1";
         final LockingStrategy lock = newLockTxProxy(appId, uniqueId, JpaLockingStrategy.DEFAULT_LOCK_TIMEOUT);
         try {
-	        assertTrue(lock.acquire());
-	        assertEquals(uniqueId, getOwner(appId));
-	        assertFalse(lock.acquire());
-	        lock.release();
-	        assertNull(getOwner(appId));
-        } catch (Exception e) {
+            assertTrue(lock.acquire());
+            assertEquals(uniqueId, getOwner(appId));
+            assertFalse(lock.acquire());
+            lock.release();
+            assertNull(getOwner(appId));
+        } catch (final Exception e) {
             logger.debug("testNonReentrantBehavior produced an error", e);
             fail("testNonReentrantBehavior failed.");
         }
@@ -171,14 +170,14 @@ public class JpaLockingStrategyTests implements InitializingBean {
         final ExecutorService executor = Executors.newFixedThreadPool(CONCURRENT_SIZE);
         try {
             testConcurrency(executor, getConcurrentLocks("concurrent-new"));
-        } catch (Exception e) {
+        } catch (final Exception e) {
             logger.debug("testConcurrentAcquireAndRelease produced an error", e);
             fail("testConcurrentAcquireAndRelease failed.");
         } finally {
             executor.shutdownNow();
         }
     }
-    
+
     /**
      * Test concurrent acquire/release semantics for existing lock.
      */
@@ -191,14 +190,14 @@ public class JpaLockingStrategyTests implements InitializingBean {
         final ExecutorService executor = Executors.newFixedThreadPool(CONCURRENT_SIZE);
         try {
             testConcurrency(executor, locks);
-        } catch (Exception e) {
+        } catch (final Exception e) {
             logger.debug("testConcurrentAcquireAndReleaseOnExistingLock produced an error", e);
             fail("testConcurrentAcquireAndReleaseOnExistingLock failed.");
         } finally {
             executor.shutdownNow();
         }
     }
-    
+
     private LockingStrategy[] getConcurrentLocks(final String appId) {
         final LockingStrategy[] locks = new LockingStrategy[CONCURRENT_SIZE];
         for (int i = 1; i <= locks.length; i++) {
@@ -218,15 +217,16 @@ public class JpaLockingStrategyTests implements InitializingBean {
                new Class[] {LockingStrategy.class},
                new TransactionalLockInvocationHandler(lock));
     }
-    
+
     private String getOwner(final String appId) {
-        final List<Map<String, Object>> results = simpleJdbcTemplate.queryForList("SELECT unique_id FROM locks WHERE application_id=?", appId);
+        final List<Map<String, Object>> results = simpleJdbcTemplate.queryForList(
+                "SELECT unique_id FROM locks WHERE application_id=?", appId);
         if (results.size() == 0) {
             return null;
         }
         return (String) results.get(0).get("unique_id");
     }
-    
+
     private void testConcurrency(final ExecutorService executor, final LockingStrategy[] locks) throws Exception {
         final List<Locker> lockers = new ArrayList<Locker>(locks.length);
         for (int i = 0; i < locks.length; i++) {
@@ -253,19 +253,20 @@ public class JpaLockingStrategyTests implements InitializingBean {
         }
         assertTrue("Release count should be <= 1 but was " + releaseCount, releaseCount <= 1);
     }
-    
+
     class TransactionalLockInvocationHandler implements InvocationHandler {
         private JpaLockingStrategy jpaLock;
-        
+
         public TransactionalLockInvocationHandler(final JpaLockingStrategy lock) {
             jpaLock = lock;
         }
-        
+
         public JpaLockingStrategy getLock() {
             return jpaLock;
         }
 
         /** {@inheritDoc} */
+        @Override
         public Object invoke(final Object proxy, final Method method, final Object[] args) throws Throwable {
             return new TransactionTemplate(txManager).execute(new TransactionCallback<Object>() {
                 public Object doInTransaction(final TransactionStatus status) {
@@ -275,51 +276,51 @@ public class JpaLockingStrategyTests implements InitializingBean {
                         logger.debug("Performed {} on {}", method.getName(), jpaLock);
                         return result;
                         // Force result of transaction to database
-                    } catch (Exception e) {
+                    } catch (final Exception e) {
                         throw new RuntimeException("Transactional method invocation failed.", e);
                     }
                 }
             });
         }
-        
+
     }
 
     class Locker implements Callable<Boolean> {
-        
+
         private LockingStrategy lock;
-        
-        public Locker(final LockingStrategy l)
-        {
+
+        public Locker(final LockingStrategy l) {
             lock = l;
         }
 
         /** {@inheritDoc} */
+        @Override
         public Boolean call() throws Exception {
             try {
                 return lock.acquire();
-            } catch (Exception e) {
+            } catch (final Exception e) {
                 logger.debug("{} failed to acquire lock", lock, e);
                 return false;
             }
         }
     }
-    
+
 
     class Releaser implements Callable<Boolean> {
-        
+
         private LockingStrategy lock;
-        
-        public Releaser(final LockingStrategy l)
-        {
+
+        public Releaser(final LockingStrategy l) {
             lock = l;
         }
 
         /** {@inheritDoc} */
+        @Override
         public Boolean call() throws Exception {
             try {
-	            lock.release();
-	            return true;
-            } catch (Exception e) {
+                lock.release();
+                return true;
+            } catch (final Exception e) {
                 logger.debug("{} failed to release lock", lock, e);
                 return false;
             }

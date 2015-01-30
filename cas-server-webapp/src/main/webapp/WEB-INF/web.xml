@@ -43,6 +43,27 @@
   </filter-mapping>
 
   <filter>
+    <filter-name>requestParameterSecurityFilter</filter-name>
+    <filter-class>org.jasig.cas.security.RequestParameterPolicyEnforcementFilter</filter-class>
+    <init-param>
+      <param-name>parametersToCheck</param-name>
+      <param-value>ticket service renew gateway warn target SAMLart pgtUrl pgt pgtId pgtIou targetService</param-value>
+    </init-param>
+    <init-param>
+      <param-name>charactersToForbid</param-name>
+      <param-value>none</param-value>
+    </init-param>
+    <init-param>
+      <param-name>allowMultiValuedParameters</param-name>
+      <param-value>false</param-value>
+    </init-param>
+  </filter>
+  <filter-mapping>
+    <filter-name>requestParameterSecurityFilter</filter-name>
+    <url-pattern>/*</url-pattern>
+  </filter-mapping>
+
+  <filter>
     <filter-name>springSecurityFilterChain</filter-name>
     <filter-class>org.springframework.web.filter.DelegatingFilterProxy</filter-class>
   </filter>
@@ -52,7 +73,7 @@
   </filter-mapping>
   <filter-mapping>
     <filter-name>springSecurityFilterChain</filter-name>
-    <url-pattern>/services/*</url-pattern>
+    <url-pattern>/statistics</url-pattern>
   </filter-mapping>
 
   <filter>
@@ -131,9 +152,9 @@
 
   <servlet-mapping>
     <servlet-name>cas</servlet-name>
-    <url-pattern>/samlValidate</url-pattern>
+    <url-pattern>/p3/serviceValidate</url-pattern>
   </servlet-mapping>
-
+  
   <servlet-mapping>
     <servlet-name>cas</servlet-name>
     <url-pattern>/proxy</url-pattern>
@@ -146,52 +167,12 @@
 
   <servlet-mapping>
     <servlet-name>cas</servlet-name>
-    <url-pattern>/CentralAuthenticationService</url-pattern>
-  </servlet-mapping>
-
-  <servlet-mapping>
-    <servlet-name>cas</servlet-name>
-    <url-pattern>/services/add.html</url-pattern>
-  </servlet-mapping>
-
-  <servlet-mapping>
-    <servlet-name>cas</servlet-name>
-    <url-pattern>/services/viewStatistics.html</url-pattern>
-  </servlet-mapping>
-
-  <servlet-mapping>
-    <servlet-name>cas</servlet-name>
-    <url-pattern>/services/logout.html</url-pattern>
-  </servlet-mapping>
-
-  <servlet-mapping>
-    <servlet-name>cas</servlet-name>
-    <url-pattern>/services/loggedOut.html</url-pattern>
-  </servlet-mapping>
-
-  <servlet-mapping>
-    <servlet-name>cas</servlet-name>
-    <url-pattern>/services/manage.html</url-pattern>
-  </servlet-mapping>
-
-  <servlet-mapping>
-    <servlet-name>cas</servlet-name>
-    <url-pattern>/services/edit.html</url-pattern>
-  </servlet-mapping>
-
-  <servlet-mapping>
-    <servlet-name>cas</servlet-name>
-    <url-pattern>/openid/*</url-pattern>
-  </servlet-mapping>
-
-  <servlet-mapping>
-    <servlet-name>cas</servlet-name>
-    <url-pattern>/services/deleteRegisteredService.html</url-pattern>
+    <url-pattern>/p3/proxyValidate</url-pattern>
   </servlet-mapping>
   
   <servlet-mapping>
-	<servlet-name>cas</servlet-name>
-	<url-pattern>/services/updateRegisteredServiceEvaluationOrder.html</url-pattern>
+    <servlet-name>cas</servlet-name>
+    <url-pattern>/CentralAuthenticationService</url-pattern>
   </servlet-mapping>
 
   <servlet-mapping>
@@ -201,12 +182,12 @@
 
   <servlet-mapping>
     <servlet-name>cas</servlet-name>
-    <url-pattern>/authorizationFailure.html</url-pattern>
+    <url-pattern>/statistics</url-pattern>
   </servlet-mapping>
 
   <servlet-mapping>
     <servlet-name>cas</servlet-name>
-    <url-pattern>/403.html</url-pattern>
+    <url-pattern>/authorizationFailure.html</url-pattern>
   </servlet-mapping>
 
   <session-config>
@@ -215,13 +196,13 @@
   </session-config>
 
   <error-page>
-    <exception-type>org.springframework.context.ApplicationContextException</exception-type>
-    <location>/WEB-INF/view/jsp/brokenContext.jsp</location>
+    <error-code>401</error-code>
+    <location>/authorizationFailure.html</location>
   </error-page>
 
   <error-page>
-    <error-code>500</error-code>
-    <location>/WEB-INF/view/jsp/errors.jsp</location>
+    <error-code>403</error-code>
+    <location>/authorizationFailure.html</location>
   </error-page>
 
   <error-page>
@@ -230,8 +211,18 @@
   </error-page>
 
   <error-page>
-    <error-code>403</error-code>
-    <location>/403.html</location>
+    <error-code>500</error-code>
+    <location>/WEB-INF/view/jsp/errors.jsp</location>
+  </error-page>
+
+  <error-page>
+    <error-code>501</error-code>
+    <location>/WEB-INF/view/jsp/errors.jsp</location>
+  </error-page>
+
+  <error-page>
+    <error-code>503</error-code>
+    <location>/WEB-INF/view/jsp/errors.jsp</location>
   </error-page>
 
   <welcome-file-list>

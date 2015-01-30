@@ -1,0 +1,7 @@
+description = 'Jasig CAS Memcached Integration'
+dependencies {
+  	compile project(':cas-server-core'),
+	     	'net.spy:spymemcached:2.9.1',
+	     	'com.googlecode:kryo:1.04'
+  	providedCompile project(':cas-server-support-saml')
+}

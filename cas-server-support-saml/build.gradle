@@ -1,0 +1,17 @@
+description = 'Jasig CAS SAML Server and Validation Support'
+dependencies {
+  	compile project(':cas-server-core'),
+  			 'javax.xml:xmldsig:1.0',	
+    		 'jdom:jdom:1.0'
+    compile('org.opensaml:opensaml:2.5.1-1') {
+		exclude(module: 'log4j-over-slf4j')
+		exclude(module: 'joda-time')
+    }
+    
+    
+    runtime('org.apache.santuario:xmlsec:1.4.3') {
+		exclude(module: 'commons-logging')
+    }
+ 	
+ 	testCompile project(':cas-server-core')
+}

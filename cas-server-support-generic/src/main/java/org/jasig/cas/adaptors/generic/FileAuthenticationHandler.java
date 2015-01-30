@@ -21,11 +21,18 @@ package org.jasig.cas.adaptors.generic;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.security.GeneralSecurityException;
 
+import org.apache.commons.io.IOUtils;
+import org.jasig.cas.authentication.HandlerResult;
+import org.jasig.cas.authentication.PreventedException;
+import org.jasig.cas.authentication.UsernamePasswordCredential;
 import org.jasig.cas.authentication.handler.support.AbstractUsernamePasswordAuthenticationHandler;
-import org.jasig.cas.authentication.principal.UsernamePasswordCredentials;
+import org.jasig.cas.authentication.principal.SimplePrincipal;
 import org.springframework.core.io.Resource;
 
+import javax.security.auth.login.AccountNotFoundException;
+import javax.security.auth.login.FailedLoginException;
 import javax.validation.constraints.NotNull;
 
 /**
@@ -36,13 +43,12 @@ import javax.validation.constraints.NotNull;
  * there is a match, the user is authenticated. Note that the default password
  * translator is a plaintext password translator and the default separator is
  * "::" (without quotes).
- * 
+ *
  * @author Scott Battaglia
- * @version $Revision$ $Date$
+ * @author Marvin S. Addison
  * @since 3.0
  */
-public class FileAuthenticationHandler extends
-    AbstractUsernamePasswordAuthenticationHandler {
+public class FileAuthenticationHandler extends AbstractUsernamePasswordAuthenticationHandler {
 
     /** The default separator in the file. */
     private static final String DEFAULT_SEPARATOR = "::";
@@ -55,40 +61,25 @@ public class FileAuthenticationHandler extends
     @NotNull
     private Resource fileName;
 
-    protected final boolean authenticateUsernamePasswordInternal(final UsernamePasswordCredentials credentials) {
-        BufferedReader bufferedReader = null;
-
+    /** {@inheritDoc} */
+    @Override
+    protected final HandlerResult authenticateUsernamePasswordInternal(final UsernamePasswordCredential credential)
+            throws GeneralSecurityException, PreventedException {
         try {
-            bufferedReader = new BufferedReader(new InputStreamReader(this.fileName.getInputStream()));
-            String line = bufferedReader.readLine();
-            while (line != null) {
-                final String[] lineFields = line.split(this.separator);
-                final String userName = lineFields[0];
-                final String password = lineFields[1];
-
-                final String transformedUsername = getPrincipalNameTransformer().transform(credentials.getUsername());
-                if (transformedUsername.equals(userName)) {
-                    if (this.getPasswordEncoder().encode(
-                        credentials.getPassword()).equals(password)) {
-                        return true;
-                    }
-                    break;
-                }
-                line = bufferedReader.readLine();
+            
+            final String username = credential.getUsername();
+            final String passwordOnRecord = getPasswordOnRecord(username);
+            if (passwordOnRecord == null) {
+                throw new AccountNotFoundException(username + " not found in backing file.");
             }
-        } catch (final Exception e) {
-            log.error(e.getMessage(), e);
-        } finally {
-            try {
-                if (bufferedReader != null) {
-                    bufferedReader.close();
-                }
-            } catch (IOException e) {
-                log.error(e.getMessage(),e);
+            if (credential.getPassword() != null
+                    && this.getPasswordEncoder().encode(credential.getPassword()).equals(passwordOnRecord)) {
+                return createHandlerResult(credential, new SimplePrincipal(username), null);
             }
+        } catch (final IOException e) {
+            throw new PreventedException("IO error reading backing file", e);
         }
-
-        return false;
+        throw new FailedLoginException();
     }
 
     /**
@@ -103,5 +94,25 @@ public class FileAuthenticationHandler extends
      */
     public final void setSeparator(final String separator) {
         this.separator = separator;
+    }
+
+    private String getPasswordOnRecord(final String username) throws IOException {
+        BufferedReader bufferedReader = null;
+        try {
+            bufferedReader = new BufferedReader(new InputStreamReader(this.fileName.getInputStream()));
+            String line = bufferedReader.readLine();
+            while (line != null) {
+                final String[] lineFields = line.split(this.separator);
+                final String userOnRecord = lineFields[0];
+                final String passOnRecord = lineFields[1];
+                if (username.equals(userOnRecord)) {
+                    return passOnRecord;
+                }
+                line = bufferedReader.readLine();
+            }
+        } finally {
+            IOUtils.closeQuietly(bufferedReader);
+        }
+        return null;
     }
 }

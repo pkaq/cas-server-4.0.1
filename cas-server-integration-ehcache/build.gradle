@@ -1,0 +1,6 @@
+description = 'Jasig CAS Ehcache Integration'
+dependencies {
+  compile 'net.sf.ehcache:ehcache:2.7.2',
+  		   project(':cas-server-core')
+  testCompile project(':cas-server-core')
+}

@@ -18,33 +18,34 @@
  */
 package org.jasig.cas.adaptors.trusted.authentication.handler.support;
 
-import org.jasig.cas.adaptors.trusted.authentication.principal.PrincipalBearingCredentials;
-import org.jasig.cas.authentication.principal.SimplePrincipal;
-import org.jasig.cas.authentication.principal.UsernamePasswordCredentials;
+import static org.junit.Assert.*;
 
-import junit.framework.TestCase;
+import org.jasig.cas.adaptors.trusted.authentication.principal.PrincipalBearingCredential;
+import org.jasig.cas.authentication.principal.SimplePrincipal;
+import org.jasig.cas.authentication.UsernamePasswordCredential;
+import org.junit.Test;
 
 /**
  * @author Andrew Petro
- * @version $Revision$ $Date$
  * @since 3.0.5
  */
-public final class PrincipalBearingCredentialsAuthenticationHandlerTests 
-    extends TestCase {
+public final class PrincipalBearingCredentialsAuthenticationHandlerTests {
 
-    private PrincipalBearingCredentialsAuthenticationHandler handler 
-        = new PrincipalBearingCredentialsAuthenticationHandler();    
+    private final PrincipalBearingCredentialsAuthenticationHandler handler
+                = new PrincipalBearingCredentialsAuthenticationHandler();
     /**
      * When the credentials bear a Principal, succeed the authentication.
      */
-    public void testNonNullPrincipal() {
-        PrincipalBearingCredentials credentials = new PrincipalBearingCredentials(new SimplePrincipal("scott"));
-        assertTrue(this.handler.authenticate(credentials));
-    }    
-    
+    @Test
+    public void testNonNullPrincipal() throws Exception {
+        PrincipalBearingCredential credentials = new PrincipalBearingCredential(new SimplePrincipal("scott"));
+        assertNotNull(this.handler.authenticate(credentials));
+    }
+
+    @Test
     public void testSupports() {
-        PrincipalBearingCredentials credentials = new PrincipalBearingCredentials(new SimplePrincipal("scott"));
+        PrincipalBearingCredential credentials = new PrincipalBearingCredential(new SimplePrincipal("scott"));
         assertTrue(this.handler.supports(credentials));
-        assertFalse(this.handler.supports(new UsernamePasswordCredentials()));
+        assertFalse(this.handler.supports(new UsernamePasswordCredential()));
     }
 }

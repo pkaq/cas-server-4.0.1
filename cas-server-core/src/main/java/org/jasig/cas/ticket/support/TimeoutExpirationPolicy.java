@@ -18,6 +18,8 @@
  */
 package org.jasig.cas.ticket.support;
 
+import java.io.Serializable;
+
 import org.jasig.cas.ticket.ExpirationPolicy;
 import org.jasig.cas.ticket.TicketState;
 
@@ -27,18 +29,24 @@ import org.jasig.cas.ticket.TicketState;
  * <p>
  * The expiration policy defined by this class is one of inactivity.  If you are inactive for the specified
  * amount of time, the ticket will be expired.
- * 
+ *
  * @author Scott Battaglia
- * @version $Revision$ $Date$
+
  * @since 3.0
  */
-public final class TimeoutExpirationPolicy implements ExpirationPolicy {
+public final class TimeoutExpirationPolicy implements ExpirationPolicy, Serializable {
 
-    /** Serializable ID. */
-    private static final long serialVersionUID = 3545511790222979383L;
+    /** Serialization support. */
+    private static final long serialVersionUID = -7636642464326939536L;
 
     /** The time to kill in milliseconds. */
     private final long timeToKillInMilliSeconds;
+
+
+    /** No-arg constructor for serialization support. */
+    private TimeoutExpirationPolicy() {
+        this.timeToKillInMilliSeconds = 0;
+    }
 
     public TimeoutExpirationPolicy(final long timeToKillInMilliSeconds) {
         this.timeToKillInMilliSeconds = timeToKillInMilliSeconds;

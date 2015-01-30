@@ -18,59 +18,58 @@
  */
 package org.jasig.cas.ticket.support;
 
+import static org.junit.Assert.*;
+
 import org.jasig.cas.TestUtils;
 import org.jasig.cas.ticket.TicketGrantingTicket;
 import org.jasig.cas.ticket.TicketGrantingTicketImpl;
-
-import junit.framework.TestCase;
+import org.junit.Before;
+import org.junit.Test;
 
 /**
  * @author Scott Battaglia
- * @version $Revision$ $Date$
  * @since 3.0
  */
-public class ThrottledUseAndTimeoutExpirationPolicyTests extends TestCase {
+public class ThrottledUseAndTimeoutExpirationPolicyTests  {
 
-    private static final long TIMEOUT = 5000;
+    private static final long TIMEOUT = 50;
+
+    private static final long TIMEOUT_BUFFER = 10;
 
     private ThrottledUseAndTimeoutExpirationPolicy expirationPolicy;
 
     private TicketGrantingTicket ticket;
 
-    protected void setUp() throws Exception {
+    @Before
+    public void setUp() throws Exception {
         this.expirationPolicy = new ThrottledUseAndTimeoutExpirationPolicy();
         this.expirationPolicy.setTimeToKillInMilliSeconds(TIMEOUT);
-        this.expirationPolicy.setTimeInBetweenUsesInMilliSeconds(1000);
+        this.expirationPolicy.setTimeInBetweenUsesInMilliSeconds(TIMEOUT / 5);
 
         this.ticket = new TicketGrantingTicketImpl("test", TestUtils
             .getAuthentication(), this.expirationPolicy);
 
-        super.setUp();
     }
 
+    @Test
     public void testTicketIsNotExpired() {
         assertFalse(this.ticket.isExpired());
     }
-    
-    public void testTicketIsExpired() {
-        try {
-            Thread.sleep(TIMEOUT + 100);
-            assertTrue(this.ticket.isExpired());
-        } catch (InterruptedException e) {
-            fail(e.getMessage());
-        }
+
+    @Test
+    public void testTicketIsExpired() throws InterruptedException {
+        Thread.sleep(TIMEOUT + TIMEOUT_BUFFER);
+        assertTrue(this.ticket.isExpired());
     }
-    
-    public void testTicketUsedButWithTimeout() {
-        try {
-            this.ticket.grantServiceTicket("test", TestUtils.getService(), this.expirationPolicy, false);
-            Thread.sleep(TIMEOUT -100);
-            assertFalse(this.ticket.isExpired());
-        } catch (InterruptedException e) {
-            fail(e.getMessage());
-        }
+
+    @Test
+    public void testTicketUsedButWithTimeout() throws InterruptedException {
+        this.ticket.grantServiceTicket("test", TestUtils.getService(), this.expirationPolicy, false);
+        Thread.sleep(TIMEOUT - TIMEOUT_BUFFER);
+        assertFalse(this.ticket.isExpired());
     }
-    
+
+    @Test
     public void testNotWaitingEnoughTime() {
         this.ticket.grantServiceTicket("test", TestUtils.getService(), this.expirationPolicy, false);
         assertTrue(this.ticket.isExpired());

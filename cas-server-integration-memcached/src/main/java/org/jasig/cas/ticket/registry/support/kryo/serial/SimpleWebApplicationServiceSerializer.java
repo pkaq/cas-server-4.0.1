@@ -23,15 +23,14 @@ import java.nio.ByteBuffer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.serialize.SimpleSerializer;
 import org.jasig.cas.authentication.principal.SimpleWebApplicationServiceImpl;
-import org.jasig.cas.util.HttpClient;
 
 /**
  * Serializer for {@link SimpleWebApplicationServiceImpl} class.
  *
  * @author Marvin S. Addison
- * @version $Revision: $
  */
 public final class SimpleWebApplicationServiceSerializer extends SimpleSerializer<SimpleWebApplicationServiceImpl> {
+    /** Kyro instance. **/
     protected final Kryo kryo;
 
     public SimpleWebApplicationServiceSerializer(final Kryo kryo) {
@@ -43,6 +42,6 @@ public final class SimpleWebApplicationServiceSerializer extends SimpleSerialize
     }
 
     public SimpleWebApplicationServiceImpl read(final ByteBuffer buffer) {
-        return new SimpleWebApplicationServiceImpl(kryo.readObjectData(buffer, String.class), new HttpClient());
+        return new SimpleWebApplicationServiceImpl(kryo.readObjectData(buffer, String.class));
     }
 }

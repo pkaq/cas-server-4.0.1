@@ -1,0 +1,46 @@
+rootProject.name = 'cas-server'
+include ':cas-server-core'
+include ':cas-server-webapp'
+include ':cas-server-webapp-support'
+include ':cas-server-support-generic'
+include ':cas-server-support-jdbc'
+include ':cas-server-support-ldap'
+include ':cas-server-support-legacy'
+include ':cas-server-support-openid'
+include ':cas-server-support-radius'
+include ':cas-server-support-spnego'
+include ':cas-server-support-trusted'
+include ':cas-server-support-x509'
+include ':cas-server-support-oauth'
+include ':cas-server-support-pac4j'
+include ':cas-server-support-saml'
+include ':cas-server-integration-jboss'
+include ':cas-server-integration-memcached'
+include ':cas-server-integration-ehcache'
+include ':cas-server-integration-restlet'
+include ':cas-server-uber-webapp'
+include ':cas-server-extension-clearpass'
+include ':cas-management-webapp'
+
+project(':cas-server-core').projectDir = "$rootDir/cas-server-core" as File
+project(':cas-server-webapp').projectDir = "$rootDir/cas-server-webapp" as File
+project(':cas-server-webapp-support').projectDir = "$rootDir/cas-server-webapp-support" as File
+project(':cas-server-support-generic').projectDir = "$rootDir/cas-server-support-generic" as File
+project(':cas-server-support-jdbc').projectDir = "$rootDir/cas-server-support-jdbc" as File
+project(':cas-server-support-ldap').projectDir = "$rootDir/cas-server-support-ldap" as File
+project(':cas-server-support-legacy').projectDir = "$rootDir/cas-server-support-legacy" as File
+project(':cas-server-support-openid').projectDir = "$rootDir/cas-server-support-openid" as File
+project(':cas-server-support-radius').projectDir = "$rootDir/cas-server-support-radius" as File
+project(':cas-server-support-spnego').projectDir = "$rootDir/cas-server-support-spnego" as File
+project(':cas-server-support-trusted').projectDir = "$rootDir/cas-server-support-trusted" as File
+project(':cas-server-support-x509').projectDir = "$rootDir/cas-server-support-x509" as File
+project(':cas-server-support-oauth').projectDir = "$rootDir/cas-server-support-oauth" as File
+project(':cas-server-support-pac4j').projectDir = "$rootDir/cas-server-support-pac4j" as File
+project(':cas-server-support-saml').projectDir = "$rootDir/cas-server-support-saml" as File
+project(':cas-server-integration-jboss').projectDir = "$rootDir/cas-server-integration-jboss" as File
+project(':cas-server-integration-memcached').projectDir = "$rootDir/cas-server-integration-memcached" as File
+project(':cas-server-integration-ehcache').projectDir = "$rootDir/cas-server-integration-ehcache" as File
+project(':cas-server-integration-restlet').projectDir = "$rootDir/cas-server-integration-restlet" as File
+project(':cas-server-uber-webapp').projectDir = "$rootDir/cas-server-uber-webapp" as File
+project(':cas-server-extension-clearpass').projectDir = "$rootDir/cas-server-extension-clearpass" as File
+project(':cas-management-webapp').projectDir = "$rootDir/cas-management-webapp" as File

@@ -18,75 +18,78 @@
  */
 package org.jasig.cas.authentication.handler.support;
 
-import org.jasig.cas.authentication.handler.AuthenticationException;
-import org.jasig.cas.authentication.handler.NamedAuthenticationHandler;
-import org.jasig.cas.authentication.principal.Credentials;
+import java.security.GeneralSecurityException;
+
+import org.jasig.cas.authentication.AbstractAuthenticationHandler;
+import org.jasig.cas.authentication.HandlerResult;
+import org.jasig.cas.authentication.Credential;
+import org.jasig.cas.authentication.PreventedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.validation.constraints.NotNull;
+import javax.security.auth.login.FailedLoginException;
 
 /**
  * Abstract authentication handler that allows deployers to utilize the bundled
  * AuthenticationHandlers while providing a mechanism to perform tasks before
  * and after authentication.
- * 
+ *
  * @author Scott Battaglia
- * @version $Revision$ $Date$
+ * @author Marvin S. Addison
+ *
  * @since 3.1
  */
-public abstract class AbstractPreAndPostProcessingAuthenticationHandler
-    implements NamedAuthenticationHandler {
-    
+public abstract class AbstractPreAndPostProcessingAuthenticationHandler extends AbstractAuthenticationHandler {
+
     /** Instance of logging for subclasses. */
-    protected Logger log = LoggerFactory.getLogger(this.getClass());
-    
-    /** The name of the authentication handler. */
-    @NotNull
-    private String name = getClass().getName();
+    protected final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     /**
-     * Method to execute before authentication occurs.
-     * 
-     * @param credentials the Credentials supplied
+     * Template method to perform arbitrary pre-authentication actions.
+     *
+     * @param credential the Credential supplied
      * @return true if authentication should continue, false otherwise.
      */
-    protected boolean preAuthenticate(final Credentials credentials) {
+    protected boolean preAuthenticate(final Credential credential) {
         return true;
     }
 
     /**
-     * Method to execute after authentication occurs.
-     * 
-     * @param credentials the supplied credentials
-     * @param authenticated the result of the authentication attempt.
-     * @return true if the handler should return true, false otherwise.
+     * Template method to perform arbitrary post-authentication actions.
+     *
+     * @param credential the supplied credential
+     * @param result the result of the authentication attempt.
+     *
+     * @return An authentication handler result that MAY be different or modified from that provided.
      */
-    protected boolean postAuthenticate(final Credentials credentials,
-        final boolean authenticated) {
-        return authenticated;
-    }
-    
-    public final void setName(final String name) {
-        this.name = name;
-    }
-    
-    public final String getName() {
-        return this.name;
+    protected HandlerResult postAuthenticate(final Credential credential, final HandlerResult result) {
+        return result;
     }
 
-    public final boolean authenticate(final Credentials credentials)
-        throws AuthenticationException {
+    /** {@inheritDoc} */
+    @Override
+    public final HandlerResult authenticate(final Credential credential)
+            throws GeneralSecurityException, PreventedException {
 
-        if (!preAuthenticate(credentials)) {
-            return false;
+        if (!preAuthenticate(credential)) {
+            throw new FailedLoginException();
         }
 
-        final boolean authenticated = doAuthentication(credentials);
-
-        return postAuthenticate(credentials, authenticated);
+        return postAuthenticate(credential, doAuthentication(credential));
     }
 
-    protected abstract boolean doAuthentication(final Credentials credentials)
-        throws AuthenticationException;
+    /**
+     * Performs the details of authentication and returns an authentication handler result on success.
+     *
+     *
+     * @param credential Credential to authenticate.
+     *
+     * @return Authentication handler result on success.
+     *
+     * @throws GeneralSecurityException On authentication failure that is thrown out to the caller of
+     * {@link #authenticate(org.jasig.cas.authentication.Credential)}.
+     * @throws PreventedException On the indeterminate case when authentication is prevented.
+     */
+    protected abstract HandlerResult doAuthentication(final Credential credential)
+            throws GeneralSecurityException, PreventedException;
 }

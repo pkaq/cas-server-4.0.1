@@ -22,7 +22,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map.Entry;
+import java.util.Map;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -41,20 +41,19 @@ import org.springframework.util.Assert;
  * single-sign on access to any service that opts into single-sign on.
  * Expiration of a TicketGrantingTicket is controlled by the ExpirationPolicy
  * specified as object creation.
- * 
+ *
  * @author Scott Battaglia
- * @version $Revision: 1.3 $ $Date: 2007/02/20 14:41:04 $
  * @since 3.0
  */
 @Entity
 @Table(name="TICKETGRANTINGTICKET")
-public final class TicketGrantingTicketImpl extends AbstractTicket implements
-    TicketGrantingTicket {
+public final class TicketGrantingTicketImpl extends AbstractTicket implements TicketGrantingTicket {
 
     /** Unique Id for serialization. */
-    private static final long serialVersionUID = -5197946718924166491L;
+    private static final long serialVersionUID = -8608149809180911599L;
 
-    private static final Logger LOG = LoggerFactory.getLogger(TicketGrantingTicketImpl.class);
+    /** Logger instance. */
+    private static final Logger LOGGER = LoggerFactory.getLogger(TicketGrantingTicketImpl.class);
 
     /** The authenticated object for which this ticket was generated for. */
     @Lob
@@ -64,26 +63,31 @@ public final class TicketGrantingTicketImpl extends AbstractTicket implements
     /** Flag to enforce manual expiration. */
     @Column(name="EXPIRED", nullable=false)
     private Boolean expired = false;
-    
+
+    /** The services associated to this ticket. */
     @Lob
     @Column(name="SERVICES_GRANTED_ACCESS_TO", nullable=false)
-    private final HashMap<String,Service> services = new HashMap<String, Service>();
-    
+    private final HashMap<String, Service> services = new HashMap<String, Service>();
+
+    @Lob
+    @Column(name="SUPPLEMENTAL_AUTHENTICATIONS", nullable=false)
+    private final ArrayList<Authentication> supplementalAuthentications = new ArrayList<Authentication>();
+
     public TicketGrantingTicketImpl() {
         // nothing to do
     }
 
     /**
      * Constructs a new TicketGrantingTicket.
-     * 
+     * May throw an {@link IllegalArgumentException} if the Authentication object is null.
+     *
      * @param id the id of the Ticket
      * @param ticketGrantingTicket the parent ticket
      * @param authentication the Authentication request for this ticket
      * @param policy the expiration policy for this ticket.
-     * @throws IllegalArgumentException if the Authentication object is null
      */
     public TicketGrantingTicketImpl(final String id,
-        final TicketGrantingTicketImpl ticketGrantingTicket,
+        final TicketGrantingTicket ticketGrantingTicket,
         final Authentication authentication, final ExpirationPolicy policy) {
         super(id, ticketGrantingTicket, policy);
 
@@ -95,7 +99,7 @@ public final class TicketGrantingTicketImpl extends AbstractTicket implements
     /**
      * Constructs a new TicketGrantingTicket without a parent
      * TicketGrantingTicket.
-     * 
+     *
      * @param id the id of the Ticket
      * @param authentication the Authentication request for this ticket
      * @param policy the expiration policy for this ticket.
@@ -105,10 +109,22 @@ public final class TicketGrantingTicketImpl extends AbstractTicket implements
         this(id, null, authentication, policy);
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public Authentication getAuthentication() {
         return this.authentication;
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>The state of the ticket is affected by this operation and the
+     * ticket will be considered used. The state update subsequently may
+     * impact the ticket expiration policy in that, depending on the policy
+     * configuration, the ticket may be considered expired.
+     */
+    @Override
     public synchronized ServiceTicket grantServiceTicket(final String id,
         final Service service, final ExpirationPolicy expirationPolicy,
         final boolean credentialsProvided) {
@@ -117,59 +133,106 @@ public final class TicketGrantingTicketImpl extends AbstractTicket implements
             expirationPolicy);
 
         updateState();
-        
+
         final List<Authentication> authentications = getChainedAuthentications();
         service.setPrincipal(authentications.get(authentications.size()-1).getPrincipal());
-        
+
         this.services.put(id, service);
 
         return serviceTicket;
     }
-    
-    private void logOutOfServices() {
-        for (final Entry<String, Service> entry : this.services.entrySet()) {
 
-            if (!entry.getValue().logOutOfService(entry.getKey())) {
-                LOG.warn("Logout message not sent to [" + entry.getValue().getId() + "]; Continuing processing...");   
-            }
+    /**
+     * Gets an immutable map of service ticket and services accessed by this ticket-granting ticket.
+     *
+     * @return an immutable map of service ticket and services accessed by this ticket-granting ticket.
+    */
+    @Override
+    public synchronized Map<String, Service> getServices() {
+        final Map<String, Service> map = new HashMap<String, Service>(services.size());
+        for (final String ticket : services.keySet()) {
+            map.put(ticket, services.get(ticket));
         }
+        return Collections.unmodifiableMap(map);
     }
 
+    /**
+     * Remove all services of the TGT (at logout).
+     */
+    @Override
+    public void removeAllServices() {
+        services.clear();
+    }
+
+    /**
+     * Return if the TGT has no parent.
+     *
+     * @return if the TGT has no parent.
+     */
+    @Override
     public boolean isRoot() {
         return this.getGrantingTicket() == null;
     }
 
-    public synchronized void expire() {
+    /** {@inheritDoc} */
+    @Override
+    public void markTicketExpired() {
         this.expired = true;
-        logOutOfServices();
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public TicketGrantingTicket getRoot() {
+        TicketGrantingTicket current = this;
+        TicketGrantingTicket parent = current.getGrantingTicket();
+        while (parent != null) {
+            current = parent;
+            parent = current.getGrantingTicket();
+        }
+        return current;
+    }
+
+    /**
+     * Return if the TGT is expired.
+     *
+     * @return if the TGT is expired.
+     */
+    @Override
     public boolean isExpiredInternal() {
         return this.expired;
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public List<Authentication> getSupplementalAuthentications() {
+        return this.supplementalAuthentications;
+    }
+
+    /** {@inheritDoc} */
+    @Override
     public List<Authentication> getChainedAuthentications() {
         final List<Authentication> list = new ArrayList<Authentication>();
 
-        if (this.getGrantingTicket() == null) {
-            list.add(this.getAuthentication());
+        list.add(getAuthentication());
+
+        if (getGrantingTicket() == null) {
             return Collections.unmodifiableList(list);
         }
 
-        list.add(this.getAuthentication());
-        list.addAll(this.getGrantingTicket().getChainedAuthentications());
-
+        list.addAll(getGrantingTicket().getChainedAuthentications());
         return Collections.unmodifiableList(list);
     }
-    
-    public final boolean equals(final Object object) {
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean equals(final Object object) {
         if (object == null
             || !(object instanceof TicketGrantingTicket)) {
             return false;
         }
 
         final Ticket ticket = (Ticket) object;
-        
+
         return ticket.getId().equals(this.getId());
     }
 }

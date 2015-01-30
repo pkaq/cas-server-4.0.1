@@ -18,34 +18,36 @@
  */
 package org.jasig.cas.adaptors.trusted.authentication.principal;
 
-import org.jasig.cas.authentication.principal.SimplePrincipal;
-import org.jasig.cas.authentication.principal.UsernamePasswordCredentials;
+import static org.junit.Assert.*;
 
-import junit.framework.TestCase;
+import org.jasig.cas.authentication.principal.SimplePrincipal;
+import org.jasig.cas.authentication.UsernamePasswordCredential;
+import org.junit.Before;
+import org.junit.Test;
 
 /**
- * 
  * @author Scott Battaglia
- * @version $Revision$ $Date$
  * @since 3.0.5
- *
  */
-public class PrincipalBearingCredentialsToPrincipalResolverTests extends
-    TestCase {
-    private PrincipalBearingCredentialsToPrincipalResolver resolver;
-    
+public class PrincipalBearingCredentialsToPrincipalResolverTests {
+    private PrincipalBearingPrincipalResolver resolver;
+
+    @Before
     public void setUp() throws Exception {
-        this.resolver = new PrincipalBearingCredentialsToPrincipalResolver();
+        this.resolver = new PrincipalBearingPrincipalResolver();
     }
-    
+
+    @Test
     public void testSupports() {
-        assertTrue(this.resolver.supports(new PrincipalBearingCredentials(new SimplePrincipal("test"))));
-        assertFalse(this.resolver.supports(new UsernamePasswordCredentials()));
+        assertTrue(this.resolver.supports(new PrincipalBearingCredential(new SimplePrincipal("test"))));
+        assertFalse(this.resolver.supports(new UsernamePasswordCredential()));
         assertFalse(this.resolver.supports(null));
     }
-    
+
+    @Test
     public void testReturnedPrincipal() {
-        assertEquals("test", this.resolver.resolvePrincipal(new PrincipalBearingCredentials(new SimplePrincipal("test"))).getId());
+        assertEquals("test", this.resolver.resolve(
+                new PrincipalBearingCredential(new SimplePrincipal("test"))).getId());
     }
-    
+
 }

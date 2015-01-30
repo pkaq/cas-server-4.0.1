@@ -29,7 +29,9 @@ import org.hibernate.annotations.IndexColumn;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import javax.persistence.DiscriminatorColumn;
 import javax.persistence.ElementCollection;
@@ -37,6 +39,7 @@ import javax.persistence.Entity;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.Inheritance;
+import javax.persistence.Lob;
 import javax.persistence.Table;
 import javax.persistence.DiscriminatorType;
 import javax.persistence.GeneratedValue;
@@ -44,6 +47,7 @@ import javax.persistence.JoinTable;
 import javax.persistence.JoinColumn;
 import javax.persistence.Column;
 import javax.persistence.FetchType;
+import javax.persistence.Transient;
 
 /**
  * Base class for mutable, persistable registered services.
@@ -53,21 +57,17 @@ import javax.persistence.FetchType;
  */
 @Entity
 @Inheritance
-@DiscriminatorColumn(
-        name = "expression_type",
-        length = 15,
-        discriminatorType = DiscriminatorType.STRING,
-        columnDefinition = "VARCHAR(15) DEFAULT 'ant'")
+@DiscriminatorColumn(name = "expression_type", length = 15, discriminatorType = DiscriminatorType.STRING,
+                     columnDefinition = "VARCHAR(15) DEFAULT 'ant'")
 @Table(name = "RegisteredServiceImpl")
-public abstract class AbstractRegisteredService
-        implements RegisteredService, Comparable<RegisteredService>, Serializable {
+public abstract class AbstractRegisteredService implements RegisteredService, Comparable<RegisteredService>,
+        Serializable {
 
-    /** Serialization version marker  */
     private static final long serialVersionUID = 7645279151115635245L;
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
-    private long id = -1;
+    private long id = RegisteredService.INITIAL_IDENTIFIER_VALUE;
 
     @ElementCollection(targetClass = String.class, fetch = FetchType.EAGER)
     @JoinTable(name = "rs_attributes", joinColumns = @JoinColumn(name = "RegisteredServiceImpl_id"))
@@ -75,15 +75,22 @@ public abstract class AbstractRegisteredService
     @IndexColumn(name = "a_id")
     private List<String> allowedAttributes = new ArrayList<String>();
 
+    @Column(length = 255, updatable = true, insertable = true, nullable = false)
     private String description;
 
+    /**
+     * The unique identifier for this service.
+     */
+    @Column(length = 255, updatable = true, insertable = true, nullable = false)
     protected String serviceId;
 
+    @Column(length = 255, updatable = true, insertable = true, nullable = false)
     private String name;
 
+    @Column(length = 255, updatable = true, insertable = true, nullable = true)
     private String theme;
 
-    private boolean allowedToProxy = true;
+    private boolean allowedToProxy = false;
 
     private boolean enabled = true;
 
@@ -97,12 +104,30 @@ public abstract class AbstractRegisteredService
     private int evaluationOrder;
 
     /**
+     * The attribute filter instance that is responsible for determining the collection of attributes
+     * available for release based on this registered service and the filter's policy.
+     */
+    @Transient
+    private RegisteredServiceAttributeFilter attributeFilter = null;
+
+    /**
      * Name of the user attribute that this service expects as the value of the username payload in the
      * validate responses.
      */
     @Column(name = "username_attr", nullable = true, length = 256)
     private String usernameAttribute = null;
-      
+
+    /**
+     * The logout type of the service. As front channel SLO is an experimental feature,
+     * the default logout type is the back channel one.
+     */
+    @Transient
+    private LogoutType logoutType = LogoutType.BACK_CHANNEL;
+
+    @Lob
+    @Column(name = "required_handlers")
+    private HashSet<String> requiredHandlers = new HashSet<String>();
+
     public boolean isAnonymousAccess() {
         return this.anonymousAccess;
     }
@@ -147,51 +172,36 @@ public abstract class AbstractRegisteredService
         return this.ssoEnabled;
     }
 
-    public boolean equals(Object o) {
-        if (o == null) { 
-            return false; 
+    public boolean equals(final Object o) {
+        if (o == null) {
+            return false;
         }
-        
-        if (this == o)  {
+
+        if (this == o) {
             return true;
         }
-        
+
         if (!(o instanceof AbstractRegisteredService)) {
             return false;
         }
 
         final AbstractRegisteredService that = (AbstractRegisteredService) o;
 
-        return new EqualsBuilder()
-                  .append(this.allowedToProxy, that.allowedToProxy)
-                  .append(this.anonymousAccess, that.anonymousAccess)
-                  .append(this.enabled, that.enabled)
-                  .append(this.evaluationOrder, that.evaluationOrder)
-                  .append(this.ignoreAttributes, that.ignoreAttributes)
-                  .append(this.ssoEnabled, that.ssoEnabled)
-                  .append(this.allowedAttributes, that.allowedAttributes)
-                  .append(this.description, that.description)
-                  .append(this.name, that.name)
-                  .append(this.serviceId, that.serviceId)
-                  .append(this.theme, that.theme)
-                  .append(this.usernameAttribute, that.usernameAttribute)
-                  .isEquals();
+        return new EqualsBuilder().append(this.allowedToProxy, that.allowedToProxy)
+                .append(this.anonymousAccess, that.anonymousAccess).append(this.enabled, that.enabled)
+                .append(this.evaluationOrder, that.evaluationOrder)
+                .append(this.ignoreAttributes, that.ignoreAttributes).append(this.ssoEnabled, that.ssoEnabled)
+                .append(this.allowedAttributes, that.allowedAttributes).append(this.description, that.description)
+                .append(this.name, that.name).append(this.serviceId, that.serviceId).append(this.theme, that.theme)
+                .append(this.usernameAttribute, that.usernameAttribute).append(this.logoutType, that.logoutType)
+                .isEquals();
     }
 
     public int hashCode() {
-        return new HashCodeBuilder(7, 31)
-                  .append(this.allowedAttributes)
-                  .append(this.description)
-                  .append(this.serviceId)
-                  .append(this.name)
-                  .append(this.theme)
-                  .append(this.enabled)
-                  .append(this.ssoEnabled)
-                  .append(this.anonymousAccess)
-                  .append(this.ignoreAttributes)
-                  .append(this.evaluationOrder)
-                  .append(this.usernameAttribute)
-                  .toHashCode();
+        return new HashCodeBuilder(7, 31).append(this.allowedAttributes).append(this.description)
+                .append(this.serviceId).append(this.name).append(this.theme).append(this.enabled)
+                .append(this.ssoEnabled).append(this.anonymousAccess).append(this.ignoreAttributes)
+                .append(this.evaluationOrder).append(this.usernameAttribute).append(this.logoutType).toHashCode();
     }
 
     public void setAllowedAttributes(final List<String> allowedAttributes) {
@@ -254,25 +264,43 @@ public abstract class AbstractRegisteredService
 
     /**
      * Sets the name of the user attribute to use as the username when providing usernames to this registered service.
-     * 
+     *
      * <p>Note: The username attribute will have no affect on services that are marked for anonymous access.
-     * 
-     * @param username attribute to release for this service that may be one of the following values: 
+     *
+     * @param username attribute to release for this service that may be one of the following values:
      * <ul>
-     *  <li>name of the attribute this service prefers to consume as username</li>. 
+     *  <li>name of the attribute this service prefers to consume as username</li>.
      *  <li><code>null</code> to enforce default CAS behavior</li>
      * </ul>
      * @see #isAnonymousAccess()
      */
     public void setUsernameAttribute(final String username) {
         if (StringUtils.isBlank(username)) {
-          this.usernameAttribute = null;
+            this.usernameAttribute = null;
         } else {
-          this.usernameAttribute = username;
+            this.usernameAttribute = username;
         }
     }
-    
-    public Object clone() throws CloneNotSupportedException {
+
+    /**
+     * Returns the logout type of the service.
+     *
+     * @return the logout type of the service.
+     */
+    public final LogoutType getLogoutType() {
+        return logoutType;
+    }
+
+    /**
+     * Set the logout type of the service.
+     *
+     * @param logoutType the logout type of the service.
+     */
+    public final void setLogoutType(final LogoutType logoutType) {
+        this.logoutType = logoutType;
+    }
+
+    public RegisteredService clone() throws CloneNotSupportedException {
         final AbstractRegisteredService clone = newInstance();
         clone.copyFrom(this);
         return clone;
@@ -297,18 +325,22 @@ public abstract class AbstractRegisteredService
         this.setIgnoreAttributes(source.isIgnoreAttributes());
         this.setEvaluationOrder(source.getEvaluationOrder());
         this.setUsernameAttribute(source.getUsernameAttribute());
+        this.setLogoutType(source.getLogoutType());
     }
 
     /**
-     * Compares this instance with the <code>other</code> registered service based on 
+     * {@inheritDoc}
+     * Compares this instance with the <code>other</code> registered service based on
      * evaluation order, name. The name comparison is case insensitive.
-     * 
+     *
      * @see #getEvaluationOrder()
      */
+    @Override
     public int compareTo(final RegisteredService other) {
         return new CompareToBuilder()
                   .append(this.getEvaluationOrder(), other.getEvaluationOrder())
                   .append(this.getName().toLowerCase(), other.getName().toLowerCase())
+                  .append(this.getServiceId(), other.getServiceId())
                   .toComparison();
     }
 
@@ -325,4 +357,29 @@ public abstract class AbstractRegisteredService
     }
 
     protected abstract AbstractRegisteredService newInstance();
+
+    public final void setAttributeFilter(final RegisteredServiceAttributeFilter filter) {
+        this.attributeFilter = filter;
+    }
+
+    public RegisteredServiceAttributeFilter getAttributeFilter() {
+        return this.attributeFilter;
+    }
+
+    public Set<String> getRequiredHandlers() {
+        if (this.requiredHandlers == null) {
+            this.requiredHandlers = new HashSet<String>();
+        }
+        return this.requiredHandlers;
+    }
+
+    public void setRequiredHandlers(final Set<String> handlers) {
+        getRequiredHandlers().clear();
+        if (handlers == null) {
+            return;
+        }
+        for (final String handler : handlers) {
+            getRequiredHandlers().add(handler);
+        }
+    }
 }

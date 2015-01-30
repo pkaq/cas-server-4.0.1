@@ -34,10 +34,9 @@ import net.sf.ehcache.Element;
  * EhCache-backed implementation of a Map for caching a set of Strings.
  *
  * @author Scott Battaglia
- * @version $Revision$ $Date$
  * @since 1.0
  */
-public final class EhcacheBackedMap implements Map<String,String> {
+public final class EhcacheBackedMap implements Map<String, String> {
 
     @NotNull
     private final Cache cache;
@@ -46,53 +45,64 @@ public final class EhcacheBackedMap implements Map<String,String> {
         this.cache = cache;
     }
 
+    @Override
     public int size() {
         return this.cache.getSize();
     }
 
+    @Override
     public boolean isEmpty() {
         return this.cache.getSize() == 0;
     }
 
+    @Override
     public boolean containsKey(final Object key) {
         return get(key) != null;
     }
 
+    @Override
     public boolean containsValue(final Object value) {
         throw new UnsupportedOperationException("This operation is not supported on an Ehcache-backed Map");
     }
 
+    @Override
     public String get(final Object key) {
         final Element element = this.cache.get(key);
 
         return element == null ? null : (String) element.getValue();
     }
 
+    @Override
     public String put(final String key, final String value) {
         this.cache.put(new Element(key, value));
         return value;
     }
 
+    @Override
     public String remove(final Object key) {
         final String keyValue = get(key);
         this.cache.remove(key);
         return keyValue;
     }
 
+    @Override
     public void putAll(final Map<? extends String, ? extends String> m) {
         for (final Map.Entry<? extends String, ? extends String> entry : m.entrySet()) {
             put(entry.getKey(), entry.getValue());
         }
     }
 
+    @Override
     public void clear() {
         this.cache.removeAll();
     }
 
+    @Override
     public Set<String> keySet() {
         return new HashSet<String>(this.cache.getKeys());
     }
 
+    @Override
     public Collection<String> values() {
         final Set<String> keys = keySet();
         final Collection<String> values = new ArrayList<String>();
@@ -107,9 +117,10 @@ public final class EhcacheBackedMap implements Map<String,String> {
         return values;
     }
 
+    @Override
     public Set<Entry<String, String>> entrySet() {
         final Set<String> keys = keySet();
-        final Set<Entry<String, String>> entries = new HashSet<Entry<String,String>>();
+        final Set<Entry<String, String>> entries = new HashSet<Entry<String, String>>();
 
         for (final String key : keys) {
             final Element element = this.cache.get(key);
@@ -123,21 +134,24 @@ public final class EhcacheBackedMap implements Map<String,String> {
 
     }
 
-    protected final class ElementMapEntry implements Map.Entry<String,String> {
+    protected final class ElementMapEntry implements Map.Entry<String, String> {
 
         private final Element element;
 
-           public ElementMapEntry(final Element element) {
-               this.element = element;
+        public ElementMapEntry(final Element element) {
+            this.element = element;
         }
+        @Override
         public String getKey() {
             return (String) element.getKey();
         }
 
+        @Override
         public String getValue() {
             return (String) element.getValue();
         }
 
+        @Override
         public String setValue(final String value) {
             throw new UnsupportedOperationException("Operation Not Supported");
         }

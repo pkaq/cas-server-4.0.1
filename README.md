@@ -1,2 +1,13 @@
-###基于cas-3.5.2,增加了druid连接池以及ojdbc驱动依赖;
-用户校验采用连接数据的方式进行校验.
+# Central Authentication Service (CAS)
+
+<http://www.jasig.org/cas>
+
+## 简介
+
+基于cas-server - v4.0.1 构建
+
+1.用户验证改为数据库验证方式
+2.增加自定义返回信息
+3.构建方式更改为采用Gradle构建
+4.checkstyle取消常量参数检查
+

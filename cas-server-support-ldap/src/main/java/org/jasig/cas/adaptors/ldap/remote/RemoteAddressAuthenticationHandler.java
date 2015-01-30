@@ -20,133 +20,124 @@ package org.jasig.cas.adaptors.ldap.remote;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.security.GeneralSecurityException;
 
-import org.jasig.cas.authentication.handler.AuthenticationException;
-import org.jasig.cas.authentication.handler.AuthenticationHandler;
-import org.jasig.cas.authentication.principal.Credentials;
+import org.jasig.cas.authentication.AbstractAuthenticationHandler;
+import org.jasig.cas.authentication.HandlerResult;
+import org.jasig.cas.authentication.Credential;
+import org.jasig.cas.authentication.principal.SimplePrincipal;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.security.auth.login.FailedLoginException;
 import javax.validation.constraints.NotNull;
 
 /**
  * Checks if the remote address is in the range of allowed addresses.
- * 
+ *
  * @author David Harrison
  * @author Scott Battaglia
- * @version $Revision: 1.1 $ $Date: 2005/08/19 18:27:17 $
  * @since 3.2.1
  *
  */
-public final class RemoteAddressAuthenticationHandler implements
-    AuthenticationHandler {
-    
-    private final Logger log = LoggerFactory.getLogger(getClass());
-    
-    /** The network netmask */
+public final class RemoteAddressAuthenticationHandler extends AbstractAuthenticationHandler {
+
+    private final Logger logger = LoggerFactory.getLogger(getClass());
+
+    /** The network netmask. */
     @NotNull
     private InetAddress inetNetmask = null;
-    
-    /** The network base address */
+
+    /** The network base address. */
     @NotNull
     private InetAddress inetNetwork = null;
 
-    public boolean authenticate(final Credentials credentials)
-        throws AuthenticationException {
-        final RemoteAddressCredentials c = (RemoteAddressCredentials) credentials;
+    @Override
+    public HandlerResult authenticate(final Credential credential) throws GeneralSecurityException {
+        final RemoteAddressCredential c = (RemoteAddressCredential) credential;
         try {
             final InetAddress inetAddress = InetAddress.getByName(c.getRemoteAddress().trim());
-            return containsAddress(this.inetNetwork, this.inetNetmask, inetAddress);
+            if (containsAddress(this.inetNetwork, this.inetNetmask, inetAddress)) {
+                return new HandlerResult(this, c, new SimplePrincipal(c.getId()));
+            }
         } catch (final UnknownHostException e) {
-            return false;
-        }  
+            logger.debug("Unknown host {}", c.getRemoteAddress());
+        }
+        throw new FailedLoginException(c.getRemoteAddress() + " not in allowed range.");
     }
 
-    public boolean supports(final Credentials credentials) {
-        return credentials.getClass().equals(RemoteAddressCredentials.class);
+    @Override
+    public boolean supports(final Credential credential) {
+        return credential instanceof RemoteAddressCredential;
     }
-    
+
     /**
      * The following code is from the Apache Software Foundations's Lenya project
-     * See InetAddressUtil.java 
+     * See InetAddressUtil.java
      * Distributed under the Apache 2.0 software license
      */
-       
+
     /**
      * Checks if a subnet contains a specific IP address.
-     * 
+     *
      * @param network The network address.
      * @param netmask The subnet mask.
      * @param ip The IP address to check.
      * @return A boolean value.
      */
     private boolean containsAddress(final InetAddress network, final InetAddress netmask, final InetAddress ip) {
-        if(log.isDebugEnabled()) {
-            log.debug("Checking IP address: " + ip + " in " + network + " / " + netmask);
-        }
-        
+        logger.debug("Checking IP address: {} in ", ip, network, netmask);
+
         byte[] networkBytes = network.getAddress();
         byte[] netmaskBytes = netmask.getAddress();
         byte[] ipBytes = ip.getAddress();
-        
+
         /* check IPv4/v6-compatibility or parameters: */
         if(networkBytes.length != netmaskBytes.length
-            || netmaskBytes.length != ipBytes.length)
-        {
-            if(log.isDebugEnabled()) {
-                log.debug("Network address " + network + ", subnet mask "
-                     + netmask + " and/or host address " + ip
-                     + " have different sizes! (return false ...)");
-            }
+                || netmaskBytes.length != ipBytes.length) {
+            logger.debug("Network address {}, subnet mask {} and/or host address {}"
+                    + " have different sizes! (return false ...)", network, netmask, ip);
             return false;
         }
-        
+
         /* Check if the masked network and ip addresses match: */
         for(int i=0; i<netmaskBytes.length; i++) {
             int mask = netmaskBytes[i] & 0xff;
             if((networkBytes[i] & mask) != (ipBytes[i] & mask)) {
-                if(log.isDebugEnabled()) {
-                    log.debug(ip + " is not in " + network + " / " + netmask);
-                }
+                logger.debug("{} is not in {}/{}", ip, network, netmask);
                 return false;
             }
         }
-        if(log.isDebugEnabled()) {
-            log.debug(ip + " is in " + network + " / " + netmask);
-        }
+        logger.debug("{} is in {}/{}", ip, network, netmask);
         return true;
     }
-    
+
     /**
-     * @param ipAddressRange the IP address range that should be allowed trusted logins     * 
+     * @param ipAddressRange the IP address range that should be allowed trusted logins     *
      */
     public void setIpNetworkRange(final String ipAddressRange) {
-            
-        if(ipAddressRange != null) {
-        
-            final String[] splitAddress = ipAddressRange.split( "/" );
 
-            if (splitAddress.length == 2 ) {
+        if(ipAddressRange != null) {
+
+            final String[] splitAddress = ipAddressRange.split("/");
+
+            if (splitAddress.length == 2) {
                 // A valid ip address/netmask was supplied parse values
                 final String network = splitAddress[0].trim();
                 final String netmask = splitAddress[1].trim();
-        
+
                 try {
                     this.inetNetwork = InetAddress.getByName(network);
-                    if(log.isDebugEnabled()) {
-                        log.debug("InetAddress network: " + this.inetNetwork.toString());
-                    }                    
-                } catch (final UnknownHostException e ) {
-                    log.error("The network address was not valid: " + e.getMessage());
+                    logger.debug("InetAddress network: {}", this.inetNetwork.toString());
+                } catch (final UnknownHostException e) {
+                    logger.error("The network address was not valid: {}", e.getMessage());
                 }
-                
+
                 try {
                     this.inetNetmask = InetAddress.getByName(netmask);
-                    if(log.isDebugEnabled()) {
-                        log.debug("InetAddress netmask: " + this.inetNetmask.toString());
-                    }                    
-                } catch (final UnknownHostException e ) {
-                    log.error("The network netmask was not valid: " + e.getMessage());
+                    logger.debug("InetAddress netmask: {}", this.inetNetmask.toString());
+                } catch (final UnknownHostException e) {
+                    logger.error("The network netmask was not valid: {}", e.getMessage());
                 }
             }
         }

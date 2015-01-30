@@ -1,0 +1,17 @@
+
+description = 'Jasig CAS LDAP Support'
+dependencies {
+  	compile project(':cas-server-core'),
+  	 		'org.ldaptive:ldaptive:1.0.3',
+     		'org.springframework:spring-expression:3.2.6.RELEASE',
+     		'joda-time:joda-time:2.2'
+     		
+    compile('org.springframework.webflow:spring-webflow:2.3.2.RELEASE') {
+		exclude(module: 'commons-logging')
+		exclude(module: 'spring-context')
+		exclude(module: 'spring-web')
+    }
+    
+    testCompile 'com.fasterxml.jackson.core:jackson-databind:2.2.0',
+  				project(':cas-server-support-legacy')
+}

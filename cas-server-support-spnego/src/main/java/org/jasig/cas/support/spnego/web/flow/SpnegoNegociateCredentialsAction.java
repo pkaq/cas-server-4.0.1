@@ -33,19 +33,19 @@ import org.springframework.webflow.execution.Event;
 import org.springframework.webflow.execution.RequestContext;
 
 /**
- * First action of a SPNEGO flow : negociation.<br/> The server checks if the
- * negociation string is in the request header and this is a supported browser:
+ * First action of a SPNEGO flow : negotiation.<br/> The server checks if the
+ * negotiation string is in the request header and this is a supported browser:
  * <ul>
  * <li>If found do nothing and return <code>success()</code></li>
  * <li>else add a WWW-Authenticate response header and a 401 response status,
  * then return <code>success()</code></li>
  * </ul>
- * 
+ *
  * @see <a href='http://ietfreport.isoc.org/idref/rfc4559/#page-2'>RFC 4559</a>
  * @author Arnaud Lesueur
  * @author Marc-Antoine Garrigue
  * @author Scott Battaglia
- * @version $Revision$ $Date$
+ * @author John Gasper
  * @since 3.1
  */
 public final class SpnegoNegociateCredentialsAction extends AbstractAction {
@@ -53,36 +53,42 @@ public final class SpnegoNegociateCredentialsAction extends AbstractAction {
     /** Whether this is using the NTLM protocol or not. */
     private boolean ntlm = false;
 
+    private boolean mixedModeAuthentication = false;
+
     private List<String> supportedBrowser;
 
     private String messageBeginPrefix = constructMessagePrefix();
 
-    protected Event doExecute(RequestContext context) {
+    @Override
+    protected Event doExecute(final RequestContext context) {
         final HttpServletRequest request = WebUtils
-            .getHttpServletRequest(context);
+                .getHttpServletRequest(context);
         final HttpServletResponse response = WebUtils
-            .getHttpServletResponse(context);
+                .getHttpServletResponse(context);
         final String authorizationHeader = request
-            .getHeader(SpnegoConstants.HEADER_AUTHORIZATION);
+                .getHeader(SpnegoConstants.HEADER_AUTHORIZATION);
         final String userAgent = request
-            .getHeader(SpnegoConstants.HEADER_USER_AGENT);
+                .getHeader(SpnegoConstants.HEADER_USER_AGENT);
 
         if (StringUtils.hasText(userAgent) && isSupportedBrowser(userAgent)) {
             if (!StringUtils.hasText(authorizationHeader)
-                || !authorizationHeader.startsWith(this.messageBeginPrefix)
-                || authorizationHeader.length() <= this.messageBeginPrefix
+                    || !authorizationHeader.startsWith(this.messageBeginPrefix)
+                    || authorizationHeader.length() <= this.messageBeginPrefix
                     .length()) {
                 if (logger.isDebugEnabled()) {
                     logger
-                        .debug("Authorization header not found. Sending WWW-Authenticate header");
+                    .debug("Authorization header not found. Sending WWW-Authenticate header");
                 }
                 response.setHeader(SpnegoConstants.HEADER_AUTHENTICATE,
-                    this.ntlm ? SpnegoConstants.NTLM
-                        : SpnegoConstants.NEGOTIATE);
+                        this.ntlm ? SpnegoConstants.NTLM
+                                : SpnegoConstants.NEGOTIATE);
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 // The responseComplete flag tells the pausing view-state not to render the response
-                // because another object has taken care of it.
-                context.getExternalContext().recordResponseComplete();
+                // because another object has taken care of it. If mixed mode authentication is allowed
+                // then responseComplete should not be called so that webflow will display the login page.
+                if (!this.mixedModeAuthentication) {
+                    context.getExternalContext().recordResponseComplete();
+                }
             }
         }
         return success();
@@ -97,6 +103,24 @@ public final class SpnegoNegociateCredentialsAction extends AbstractAction {
         this.supportedBrowser = supportedBrowser;
     }
 
+   /**
+    * Sets whether mixed mode authentication should be enabled. If it is
+    * enabled then control is allowed to pass back to the Spring Webflow
+    * instead of immediately terminating the page after issuing the
+    * unauthorized (401) header. This has the effect of displaying the login
+    * page on unsupported/configured browsers.
+    * <p>
+    * If this is set to false then the page is immediately closed after the
+    * unauthorized header is sent. This is ideal in environments that only
+    * want to use Windows Integrated Auth/SPNEGO and not forms auth.
+    *
+    * @param  final should mixed mode authentication be allowed. Default is false.
+    */
+    public void setMixedModeAuthentication(final boolean enabled) {
+        this.mixedModeAuthentication = enabled;
+    }
+
+    @Override
     public void afterPropertiesSet() throws Exception {
         if (this.supportedBrowser == null) {
             this.supportedBrowser = new ArrayList<String>();
@@ -108,7 +132,7 @@ public final class SpnegoNegociateCredentialsAction extends AbstractAction {
 
     protected String constructMessagePrefix() {
         return (this.ntlm ? SpnegoConstants.NTLM : SpnegoConstants.NEGOTIATE)
-            + " ";
+                + " ";
     }
 
     protected boolean isSupportedBrowser(final String userAgent) {

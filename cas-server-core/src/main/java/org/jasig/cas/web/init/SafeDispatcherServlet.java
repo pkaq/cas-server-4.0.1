@@ -50,9 +50,8 @@ import org.springframework.web.servlet.DispatcherServlet;
  * The exception thrown by the underlying Spring DispatcherServlet init() and
  * caught in the SafeDispatcherServlet init() is exposed as a Servlet Context
  * attribute under the key "exceptionCaughtByServlet".
- * 
+ *
  * @author Andrew Petro
- * @version $Revision$ $Date$
  * @see DispatcherServlet
  */
 public final class SafeDispatcherServlet extends HttpServlet {
@@ -64,7 +63,7 @@ public final class SafeDispatcherServlet extends HttpServlet {
     public static final String CAUGHT_THROWABLE_KEY = "exceptionCaughtByServlet";
 
     /** Instance of Commons Logging. */
-    private static final Logger log = LoggerFactory.getLogger(SafeDispatcherServlet.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(SafeDispatcherServlet.class);
 
     /** The actual DispatcherServlet to which we will delegate to. */
     private DispatcherServlet delegate = new DispatcherServlet();
@@ -92,14 +91,10 @@ public final class SafeDispatcherServlet extends HttpServlet {
                 + "The Spring DispatcherServlet we wrap threw on init.\n"
                 + "But for our having caught this error, the servlet would not have initialized.";
 
-            // log it via Commons Logging
-            log.error(message, t);
+            // logger it via Commons Logging
+            LOGGER.error(message, t);
 
-            // log it to System.err
-            System.err.println(message);
-            t.printStackTrace();
-
-            // log it to the ServletContext
+            // logger it to the ServletContext
             ServletContext context = config.getServletContext();
             context.log(message, t);
 
@@ -113,9 +108,11 @@ public final class SafeDispatcherServlet extends HttpServlet {
     }
 
     /**
+     * {@inheritDoc}
      * @throws ApplicationContextException if the DispatcherServlet does not
      * initialize properly, but the servlet attempts to process a request.
      */
+    @Override
     public void service(final ServletRequest req, final ServletResponse resp)
         throws ServletException, IOException {
         /*
@@ -127,8 +124,7 @@ public final class SafeDispatcherServlet extends HttpServlet {
         if (this.initSuccess) {
             this.delegate.service(req, resp);
         } else {
-            throw new ApplicationContextException(
-                "Unable to initialize application context.");
+            throw new ApplicationContextException("Unable to initialize application context.");
         }
     }
 }

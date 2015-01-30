@@ -19,8 +19,8 @@
 package org.jasig.cas.support.spnego.web.flow;
 
 import jcifs.util.Base64;
-import org.jasig.cas.authentication.principal.Credentials;
-import org.jasig.cas.support.spnego.authentication.principal.SpnegoCredentials;
+import org.jasig.cas.authentication.Credential;
+import org.jasig.cas.support.spnego.authentication.principal.SpnegoCredential;
 import org.jasig.cas.support.spnego.util.SpnegoConstants;
 import org.jasig.cas.web.flow.AbstractNonInteractiveCredentialsAction;
 import org.jasig.cas.web.support.WebUtils;
@@ -32,24 +32,23 @@ import javax.servlet.http.HttpServletResponse;
 
 /**
  * Second action of a SPNEGO flow : decode the gssapi-data and build a new
- * {@link org.jasig.cas.support.spnego.authentication.principal.SpnegoCredentials}.<br/>
+ * {@link org.jasig.cas.support.spnego.authentication.principal.SpnegoCredential}.<br/>
  * Once AbstractNonInteractiveCredentialsAction has executed the authentication
- * procedure, this action check wether a principal is present in Credentials and
- * add correspondings response headers.
- * 
+ * procedure, this action check whether a principal is present in Credential and
+ * add corresponding response headers.
+ *
  * @author Arnaud Lesueur
  * @author Marc-Antoine Garrigue
- * @version $Revision$ $Date$
  * @see <a href='http://ietfreport.isoc.org/idref/rfc4559/#page-2'>RFC 4559</a>
  * @since 3.1
  */
 public final class SpnegoCredentialsAction extends
-    AbstractNonInteractiveCredentialsAction {
+AbstractNonInteractiveCredentialsAction {
 
     private boolean ntlm = false;
 
     private String messageBeginPrefix = constructMessagePrefix();
-    
+
     /**
      * Behavior in case of SPNEGO authentication failure :<br />
      * <ul><li>True : if spnego is the last authentication method with no fallback.</li>
@@ -58,28 +57,29 @@ public final class SpnegoCredentialsAction extends
      */
     private boolean send401OnAuthenticationFailure = true;
 
-    protected Credentials constructCredentialsFromRequest(
-        final RequestContext context) {
+    @Override
+    protected Credential constructCredentialsFromRequest(
+            final RequestContext context) {
         final HttpServletRequest request = WebUtils
-            .getHttpServletRequest(context);
+                .getHttpServletRequest(context);
 
         final String authorizationHeader = request
-            .getHeader(SpnegoConstants.HEADER_AUTHORIZATION);
+                .getHeader(SpnegoConstants.HEADER_AUTHORIZATION);
 
         if (StringUtils.hasText(authorizationHeader)
-            && authorizationHeader.startsWith(this.messageBeginPrefix)
-            && authorizationHeader.length() > this.messageBeginPrefix.length()) {
+                && authorizationHeader.startsWith(this.messageBeginPrefix)
+                && authorizationHeader.length() > this.messageBeginPrefix.length()) {
             if (logger.isDebugEnabled()) {
                 logger.debug("SPNEGO Authorization header found with "
-                    + (authorizationHeader.length() - this.messageBeginPrefix
-                        .length()) + " bytes");
+                        + (authorizationHeader.length() - this.messageBeginPrefix
+                                .length()) + " bytes");
             }
             final byte[] token = Base64.decode(authorizationHeader
-                .substring(this.messageBeginPrefix.length()));
+                    .substring(this.messageBeginPrefix.length()));
             if (logger.isDebugEnabled()) {
                 logger.debug("Obtained token: " + new String(token));
             }
-            return new SpnegoCredentials(token);
+            return new SpnegoCredential(token);
         }
 
         return null;
@@ -87,41 +87,43 @@ public final class SpnegoCredentialsAction extends
 
     protected String constructMessagePrefix() {
         return (this.ntlm ? SpnegoConstants.NTLM : SpnegoConstants.NEGOTIATE)
-            + " ";
+                + " ";
     }
 
+    @Override
     protected void onError(final RequestContext context,
-        final Credentials credentials) {
-        setResponseHeader(context, credentials);
+            final Credential credential) {
+        setResponseHeader(context, credential);
     }
 
+    @Override
     protected void onSuccess(final RequestContext context,
-        final Credentials credentials) {
-        setResponseHeader(context, credentials);
+            final Credential credential) {
+        setResponseHeader(context, credential);
     }
 
     private void setResponseHeader(final RequestContext context,
-        final Credentials credentials) {
-        if (credentials == null) {
+            final Credential credential) {
+        if (credential == null) {
             return;
         }
 
         final HttpServletResponse response = WebUtils
-            .getHttpServletResponse(context);
-        final SpnegoCredentials spnegoCredentials = (SpnegoCredentials) credentials;
+                .getHttpServletResponse(context);
+        final SpnegoCredential spnegoCredentials = (SpnegoCredential) credential;
         final byte[] nextToken = spnegoCredentials.getNextToken();
         if (nextToken != null) {
             if (logger.isDebugEnabled()) {
                 logger.debug("Obtained output token: " + new String(nextToken));
             }
             response.setHeader(SpnegoConstants.HEADER_AUTHENTICATE, (this.ntlm
-                ? SpnegoConstants.NTLM : SpnegoConstants.NEGOTIATE)
-                + " " + Base64.encode(nextToken));
+                    ? SpnegoConstants.NTLM : SpnegoConstants.NEGOTIATE)
+                    + " " + Base64.encode(nextToken));
         } else {
             logger.debug("Unable to obtain the output token required.");
         }
 
-        if ((spnegoCredentials.getPrincipal() == null) && send401OnAuthenticationFailure) {
+        if (spnegoCredentials.getPrincipal() == null && send401OnAuthenticationFailure) {
             logger.debug("Setting HTTP Status to 401");
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         }

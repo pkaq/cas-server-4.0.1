@@ -18,45 +18,51 @@
  */
 package org.jasig.cas.ticket.proxy.support;
 
+import static org.junit.Assert.*;
+
 import java.net.URL;
 
-import org.jasig.cas.authentication.principal.HttpBasedServiceCredentials;
+import org.jasig.cas.authentication.HttpBasedServiceCredential;
 import org.jasig.cas.util.DefaultUniqueTicketIdGenerator;
-import org.jasig.cas.util.HttpClient;
-
-import junit.framework.TestCase;
+import org.jasig.cas.util.SimpleHttpClient;
+import org.junit.Before;
+import org.junit.Test;
 
 /**
  * @author Scott Battaglia
- * @version $Revision$ $Date$
+
  * @since 3.0
  */
-public class Cas20ProxyHandlerTests extends TestCase {
+public class Cas20ProxyHandlerTests {
 
     private Cas20ProxyHandler handler;
 
-    protected void setUp() throws Exception {
+    @Before
+    public void setUp() throws Exception {
         this.handler = new Cas20ProxyHandler();
-        this.handler.setHttpClient(new HttpClient());
+        this.handler.setHttpClient(new SimpleHttpClient());
         this.handler.setUniqueTicketIdGenerator(new DefaultUniqueTicketIdGenerator());
     }
 
+    @Test
     public void testValidProxyTicketWithoutQueryString() throws Exception {
-        assertNotNull(this.handler.handle(new HttpBasedServiceCredentials(
+        assertNotNull(this.handler.handle(new HttpBasedServiceCredential(
             new URL("http://www.rutgers.edu/")), "proxyGrantingTicketId"));
     }
 
+    @Test
     public void testValidProxyTicketWithQueryString() throws Exception {
-        assertNotNull(this.handler.handle(new HttpBasedServiceCredentials(
+        assertNotNull(this.handler.handle(new HttpBasedServiceCredential(
             new URL("http://www.rutgers.edu/?test=test")),
             "proxyGrantingTicketId"));
     }
 
+    @Test
     public void testNonValidProxyTicket() throws Exception {
-        final HttpClient httpClient = new HttpClient();
+        final SimpleHttpClient httpClient = new SimpleHttpClient();
         httpClient.setAcceptableCodes(new int[] {900});
         this.handler.setHttpClient(httpClient);
-        assertNull(this.handler.handle(new HttpBasedServiceCredentials(new URL(
+        assertNull(this.handler.handle(new HttpBasedServiceCredential(new URL(
             "http://www.rutgers.edu")), "proxyGrantingTicketId"));
     }
 }

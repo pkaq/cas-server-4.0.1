@@ -1,0 +1,7 @@
+description = 'Jasig CAS ClearPass Extension'
+dependencies {
+  	compile project(':cas-server-core'),
+		    'net.sf.ehcache:ehcache:2.7.2',
+		    'org.jasig.cas.client:cas-client-core:3.2.1'
+  testCompile project(':cas-server-integration-ehcache')
+}

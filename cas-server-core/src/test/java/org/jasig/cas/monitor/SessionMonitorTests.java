@@ -18,8 +18,7 @@
  */
 package org.jasig.cas.monitor;
 
-import org.jasig.cas.authentication.ImmutableAuthentication;
-import org.jasig.cas.authentication.principal.SimplePrincipal;
+import org.jasig.cas.TestUtils;
 import org.jasig.cas.mock.MockService;
 import org.jasig.cas.ticket.ExpirationPolicy;
 import org.jasig.cas.ticket.TicketGrantingTicketImpl;
@@ -112,17 +111,19 @@ public class SessionMonitorTests {
         for (int i = 0; i < tgtCount; i++) {
             ticket = new TicketGrantingTicketImpl(
                     GENERATOR.getNewTicketId("TGT"),
-                    new ImmutableAuthentication(new SimplePrincipal("grover")),
+                    TestUtils.getAuthentication(),
                     TEST_EXP_POLICY);
             registry.addTicket(ticket);
         }
-        String id;
-        for (int i = 0; i < stCount; i++) {
-            registry.addTicket(ticket.grantServiceTicket(
-                    GENERATOR.getNewTicketId("ST"),
-                    new MockService("junit"),
-                    TEST_EXP_POLICY,
-                    false));
+
+        if (ticket != null) {
+          for (int i = 0; i < stCount; i++) {
+              registry.addTicket(ticket.grantServiceTicket(
+                      GENERATOR.getNewTicketId("ST"),
+                      new MockService("junit"),
+                      TEST_EXP_POLICY,
+                      false));
+          }
         }
     }
 }

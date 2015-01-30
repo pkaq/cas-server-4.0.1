@@ -1,0 +1,15 @@
+description = 'Jasig CAS OpenId Server Support'
+dependencies {
+  	compile project(':cas-server-core'),
+  			'org.openid4java:openid4java-nodeps:0.9.6',
+     		'org.apache.httpcomponents:httpclient:4.1.3'
+     		
+    compile('org.springframework.webflow:spring-webflow:2.3.2.RELEASE') {
+		exclude(module: 'commons-logging')
+		exclude(module: 'spring-context')
+		exclude(module: 'spring-web')
+    }
+    
+    testCompile 'org.mockito:mockito-all:1.9.0',
+  				project(':cas-server-core')
+}

@@ -20,46 +20,44 @@ package org.jasig.cas.adaptors.trusted.web.flow;
 
 import javax.servlet.http.HttpServletRequest;
 
-import org.jasig.cas.adaptors.trusted.authentication.principal.PrincipalBearingCredentials;
-import org.jasig.cas.authentication.principal.Credentials;
+import org.jasig.cas.adaptors.trusted.authentication.principal.PrincipalBearingCredential;
+import org.jasig.cas.authentication.Credential;
 import org.jasig.cas.authentication.principal.SimplePrincipal;
 import org.jasig.cas.web.flow.AbstractNonInteractiveCredentialsAction;
 import org.jasig.cas.web.support.WebUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
 import org.springframework.webflow.execution.RequestContext;
 
 /**
  * Implementation of the NonInteractiveCredentialsAction that looks for a remote
  * user that is set in the <code>HttpServletRequest</code> and attempts to
- * construct a Principal (and thus a PrincipalBearingCredentials). If it doesn't
+ * construct a Principal (and thus a PrincipalBearingCredential). If it doesn't
  * find one, this class returns and error event which tells the web flow it
  * could not find any credentials.
- * 
+ *
  * @author Scott Battaglia
- * @version $Revision$ $Date$
  * @since 3.0.5
  */
 public final class PrincipalFromRequestRemoteUserNonInteractiveCredentialsAction
-    extends AbstractNonInteractiveCredentialsAction {
+            extends AbstractNonInteractiveCredentialsAction {
 
-    protected Credentials constructCredentialsFromRequest(
-        final RequestContext context) {
+    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+
+    @Override
+    protected Credential constructCredentialsFromRequest(
+            final RequestContext context) {
         final HttpServletRequest request = WebUtils
-            .getHttpServletRequest(context);
+                .getHttpServletRequest(context);
         final String remoteUser = request.getRemoteUser();
 
         if (StringUtils.hasText(remoteUser)) {
-            if (logger.isDebugEnabled()) {
-                logger.debug("Remote  User [" + remoteUser
-                    + "] found in HttpServletRequest");
-            }
-            return new PrincipalBearingCredentials(new SimplePrincipal(
-                remoteUser));
+            logger.debug("Remote  User [{}] found in HttpServletRequest", remoteUser);
+            return new PrincipalBearingCredential(new SimplePrincipal(remoteUser));
         }
 
-        if (logger.isDebugEnabled()) {
-            logger.debug("Remote User not found in HttpServletRequest.");
-        }
+        logger.debug("Remote User not found in HttpServletRequest.");
 
         return null;
     }

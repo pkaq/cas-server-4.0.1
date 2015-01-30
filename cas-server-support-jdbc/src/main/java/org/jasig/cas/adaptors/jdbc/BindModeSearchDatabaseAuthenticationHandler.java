@@ -18,11 +18,16 @@
  */
 package org.jasig.cas.adaptors.jdbc;
 
+import java.security.GeneralSecurityException;
 import java.sql.Connection;
 import java.sql.SQLException;
 
-import org.jasig.cas.authentication.handler.AuthenticationException;
-import org.jasig.cas.authentication.principal.UsernamePasswordCredentials;
+import javax.security.auth.login.FailedLoginException;
+
+import org.jasig.cas.authentication.HandlerResult;
+import org.jasig.cas.authentication.PreventedException;
+import org.jasig.cas.authentication.UsernamePasswordCredential;
+import org.jasig.cas.authentication.principal.SimplePrincipal;
 import org.springframework.jdbc.datasource.DataSourceUtils;
 
 /**
@@ -30,28 +35,30 @@ import org.springframework.jdbc.datasource.DataSourceUtils;
  * database with the provided username and password. Servers are provided as a
  * Properties class with the key being the URL and the property being the type
  * of database driver needed.
- * 
+ *
  * @author Scott Battaglia
  * @author Dmitriy Kopylenko
- * @version $Revision$ $Date$
+ * @author Marvin S. Addison
+ *
  * @since 3.0
  */
-public class BindModeSearchDatabaseAuthenticationHandler extends
-    AbstractJdbcUsernamePasswordAuthenticationHandler {
+public class BindModeSearchDatabaseAuthenticationHandler extends AbstractJdbcUsernamePasswordAuthenticationHandler {
 
-    protected final boolean authenticateUsernamePasswordInternal(
-        final UsernamePasswordCredentials credentials)
-        throws AuthenticationException {
-        final String username = credentials.getUsername();
-        final String password = credentials.getPassword();
+    /** {@inheritDoc} */
+    @Override
+    protected final HandlerResult authenticateUsernamePasswordInternal(final UsernamePasswordCredential credential)
+            throws GeneralSecurityException, PreventedException {
 
         try {
-            final Connection c = this.getDataSource()
-                .getConnection(username, password);
+            
+            final String username = credential.getUsername();
+            final Connection c = this.getDataSource().getConnection(username, credential.getPassword());
             DataSourceUtils.releaseConnection(c, this.getDataSource());
-            return true;
+            return createHandlerResult(credential, new SimplePrincipal(username), null);
         } catch (final SQLException e) {
-            return false;
+            throw new FailedLoginException(e.getMessage());
+        } catch (final Exception e) {
+            throw new PreventedException("Unexpected SQL connection error", e);
         }
     }
 }

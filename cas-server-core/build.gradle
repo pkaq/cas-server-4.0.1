@@ -1,0 +1,52 @@
+description = 'Jasig CAS Core'
+dependencies {
+    compile('log4j:log4j:1.2.17') {
+		exclude(module: 'mail')
+		exclude(module: 'jms')
+		exclude(module: 'jmxtools')
+		exclude(module: 'jmxri')
+    }
+    compile  'com.github.inspektr:inspektr-audit:1.0.7.GA',
+		     'commons-io:commons-io:2.4',
+		 	 'joda-time:joda-time:2.2',
+		     'org.springframework:spring-beans:3.2.6.RELEASE',
+		     'org.springframework:spring-webmvc:3.2.6.RELEASE',
+		     'org.springframework:spring-context-support:3.2.6.RELEASE',
+		     'org.springframework:spring-tx:3.2.6.RELEASE',
+		     'org.springframework:spring-context:3.2.6.RELEASE',
+		     'org.springframework.security:spring-security-core:3.2.0.RELEASE',
+		     'org.hibernate:hibernate-core:4.1.0.Final',
+		     'commons-codec:commons-codec:1.7',
+		     'org.springframework:spring-orm:3.2.6.RELEASE',
+		     'org.springframework:spring-jdbc:3.2.6.RELEASE'
+    compile('org.jasig.service.persondir:person-directory-impl:1.5.1') {
+		exclude(module: 'commons-logging')
+    }
+   
+    compile('org.springframework:spring-core:3.2.6.RELEASE') {
+		exclude(module: 'commons-logging')
+    }
+	
+    compile 'org.perf4j:perf4j:0.9.16:log4jonly'
+    compile('org.springframework.webflow:spring-webflow:2.3.2.RELEASE') {
+		exclude(module: 'commons-logging')
+		exclude(module: 'spring-context')
+		exclude(module: 'spring-web')
+    }
+    	
+    runtime('commons-jexl:commons-jexl:1.1') {
+		exclude(module: 'commons-logging')
+    }
+    testCompile  'org.hsqldb:hsqldb:2.0.0',
+			     'org.hibernate:hibernate-validator:4.2.0.Final',
+			     'org.hibernate:hibernate-entitymanager:4.1.0.Final',
+			     'javassist:javassist:3.12.1.GA',
+			     'org.opensymphony.quartz:quartz:1.6.1',
+			     'com.github.inspektr:inspektr-support-spring:1.0.7.GA'
+}
+
+task packageTests(type: Jar) {
+  from sourceSets.test.output
+  classifier = 'tests'
+}
+artifacts.archives packageTests

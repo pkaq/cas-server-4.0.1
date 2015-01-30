@@ -18,50 +18,69 @@
  */
 package org.jasig.cas.authentication.principal;
 
+import static org.junit.Assert.*;
+
 import org.jasig.cas.TestUtils;
 import org.jasig.cas.authentication.Authentication;
-import org.jasig.cas.authentication.MutableAuthentication;
-
-import junit.framework.TestCase;
+import org.jasig.cas.authentication.AuthenticationBuilder;
+import org.jasig.cas.authentication.AuthenticationHandler;
+import org.jasig.cas.authentication.BasicCredentialMetaData;
+import org.jasig.cas.authentication.Credential;
+import org.jasig.cas.authentication.CredentialMetaData;
+import org.jasig.cas.authentication.HandlerResult;
+import org.jasig.cas.authentication.RememberMeCredential;
+import org.jasig.cas.authentication.RememberMeUsernamePasswordCredential;
+import org.jasig.cas.authentication.UsernamePasswordCredential;
+import org.jasig.cas.authentication.handler.support.SimpleTestUsernamePasswordAuthenticationHandler;
+import org.junit.Test;
 
 /**
- * 
+ *
  * @author Scott Battaglia
- * @version $Revision: 1.1 $ $Date: 2005/08/19 18:27:17 $
  * @since 3.2.1
  *
  */
-public class RememberMeAuthenticationMetaDataPopulatorTests extends TestCase {
-    
+public class RememberMeAuthenticationMetaDataPopulatorTests {
+
     private RememberMeAuthenticationMetaDataPopulator p  = new RememberMeAuthenticationMetaDataPopulator();
 
+    @Test
     public void testWithTrueRememberMeCredentials() {
-        final Authentication auth = new MutableAuthentication(TestUtils.getPrincipal());
-        final RememberMeUsernamePasswordCredentials c = new RememberMeUsernamePasswordCredentials();
+        final RememberMeUsernamePasswordCredential c = new RememberMeUsernamePasswordCredential();
         c.setRememberMe(true);
-        
-        final Authentication auth2 = this.p.populateAttributes(auth, c);
-        
-        assertEquals(Boolean.TRUE, auth2.getAttributes().get(RememberMeCredentials.AUTHENTICATION_ATTRIBUTE_REMEMBER_ME));
-    }
-    
-    public void testWithFalseRememberMeCredentials() {
-        final Authentication auth = new MutableAuthentication(TestUtils.getPrincipal());
-        final RememberMeUsernamePasswordCredentials c = new RememberMeUsernamePasswordCredentials();
-        c.setRememberMe(false);
-        
-        final Authentication auth2 = this.p.populateAttributes(auth, c);
-        
-        assertNull(auth2.getAttributes().get(RememberMeCredentials.AUTHENTICATION_ATTRIBUTE_REMEMBER_ME));
+        final AuthenticationBuilder builder = newBuilder(c);
+        final Authentication auth = builder.build();
+
+        assertEquals(true, auth.getAttributes().get(RememberMeCredential.AUTHENTICATION_ATTRIBUTE_REMEMBER_ME));
     }
 
-    
-    public void testWithoutRememberMeCredentials() {
-        final Authentication auth = new MutableAuthentication(TestUtils.getPrincipal());        
-        final Authentication auth2 = this.p.populateAttributes(auth, TestUtils.getCredentialsWithSameUsernameAndPassword());
-        
-        assertNull(auth2.getAttributes().get(RememberMeCredentials.AUTHENTICATION_ATTRIBUTE_REMEMBER_ME));
+    @Test
+    public void testWithFalseRememberMeCredentials() {
+        final RememberMeUsernamePasswordCredential c = new RememberMeUsernamePasswordCredential();
+        c.setRememberMe(false);
+        final AuthenticationBuilder builder = newBuilder(c);
+        final Authentication auth = builder.build();
+
+        assertNull(auth.getAttributes().get(RememberMeCredential.AUTHENTICATION_ATTRIBUTE_REMEMBER_ME));
     }
-    
+
+    @Test
+    public void testWithoutRememberMeCredentials() {
+        final AuthenticationBuilder builder = newBuilder(TestUtils.getCredentialsWithSameUsernameAndPassword());
+        final Authentication auth = builder.build();
+
+        assertNull(auth.getAttributes().get(RememberMeCredential.AUTHENTICATION_ATTRIBUTE_REMEMBER_ME));
+    }
+
+    private AuthenticationBuilder newBuilder(final Credential credential) {
+        final CredentialMetaData meta = new BasicCredentialMetaData(new UsernamePasswordCredential());
+        final AuthenticationHandler handler = new SimpleTestUsernamePasswordAuthenticationHandler();
+        final AuthenticationBuilder builder = new AuthenticationBuilder(TestUtils.getPrincipal())
+                .addCredential(meta)
+                .addSuccess("test", new HandlerResult(handler, meta));
+
+        this.p.populateAttributes(builder, credential);
+        return builder;
+    }
 
 }

@@ -33,16 +33,21 @@ import org.springframework.util.Assert;
  * implementations of the Ticket interface extend the AbstractTicket as it
  * handles common functionality amongst different ticket types (such as state
  * updating).
- * 
+ *
+ * AbstractTicket does not provide a protected Logger instance to
+ * avoid instantiating many such Loggers at runtime (there will be many instances
+ * of subclasses of AbstractTicket in a typical running CAS server).  Instead
+ * subclasses should use static Logger instances.
+ *
  * @author Scott Battaglia
- * @version $Revision$ $Date$
  * @since 3.0
  */
 @MappedSuperclass
 public abstract class AbstractTicket implements Ticket, TicketState {
 
+    private static final long serialVersionUID = -8506442397878267555L;
+
     /** The ExpirationPolicy this ticket will be following. */
-    // XXX removed final
     @Lob
     @Column(name="EXPIRATION_POLICY", nullable=false)
     private ExpirationPolicy expirationPolicy;
@@ -53,8 +58,8 @@ public abstract class AbstractTicket implements Ticket, TicketState {
     private String id;
 
     /** The TicketGrantingTicket this is associated with. */
-    @ManyToOne
-    private TicketGrantingTicketImpl ticketGrantingTicket;
+    @ManyToOne(targetEntity=TicketGrantingTicketImpl.class)
+    private TicketGrantingTicket ticketGrantingTicket;
 
     /** The last time this ticket was used. */
     @Column(name="LAST_TIME_USED")
@@ -71,7 +76,7 @@ public abstract class AbstractTicket implements Ticket, TicketState {
     /** The number of times this was used. */
     @Column(name="NUMBER_OF_TIMES_USED")
     private int countOfUses;
-    
+
     protected AbstractTicket() {
         // nothing to do
     }
@@ -79,13 +84,13 @@ public abstract class AbstractTicket implements Ticket, TicketState {
     /**
      * Constructs a new Ticket with a unique id, a possible parent Ticket (can
      * be null) and a specified Expiration Policy.
-     * 
+     *
      * @param id the unique identifier for the ticket
      * @param ticket the parent TicketGrantingTicket
      * @param expirationPolicy the expiration policy for the ticket.
      * @throws IllegalArgumentException if the id or expiration policy is null.
      */
-    public AbstractTicket(final String id, final TicketGrantingTicketImpl ticket,
+    public AbstractTicket(final String id, final TicketGrantingTicket ticket,
         final ExpirationPolicy expirationPolicy) {
         Assert.notNull(expirationPolicy, "expirationPolicy cannot be null");
         Assert.notNull(id, "id cannot be null");
@@ -101,6 +106,16 @@ public abstract class AbstractTicket implements Ticket, TicketState {
         return this.id;
     }
 
+    /**
+     * Records the <i>previous</i> last time this ticket was used as well as
+     * the last usage time. The ticket usage count is also incremented.
+     *
+     * <p>Tickets themselves are solely responsible to maintain their state. The
+     * determination of  ticket usage is left up to the implementation and
+     * the specific ticket type.
+     *
+     * @see ExpirationPolicy
+     */
     protected final void updateState() {
         this.previousLastTimeUsed = this.lastTimeUsed;
         this.lastTimeUsed = System.currentTimeMillis();
@@ -128,7 +143,9 @@ public abstract class AbstractTicket implements Ticket, TicketState {
     }
 
     public final boolean isExpired() {
-        return this.expirationPolicy.isExpired(this) || (getGrantingTicket() != null && getGrantingTicket().isExpired()) || isExpiredInternal();
+        return this.expirationPolicy.isExpired(this)
+                || (getGrantingTicket() != null && getGrantingTicket().isExpired())
+                || isExpiredInternal();
     }
 
     protected boolean isExpiredInternal() {
@@ -136,10 +153,10 @@ public abstract class AbstractTicket implements Ticket, TicketState {
     }
 
     public final int hashCode() {
-        return 34 ^ this.getId().hashCode();
+        return this.getId().hashCode();
     }
 
     public final String toString() {
-        return this.id;
+        return this.getId();
     }
 }

@@ -18,15 +18,21 @@
  */
 package org.jasig.cas.web.flow;
 
+import java.util.Map;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.constraints.NotNull;
 
 import org.jasig.cas.CentralAuthenticationService;
-import org.jasig.cas.authentication.handler.AuthenticationException;
-import org.jasig.cas.authentication.principal.Credentials;
+import org.jasig.cas.Message;
+import org.jasig.cas.authentication.AuthenticationException;
+import org.jasig.cas.authentication.Credential;
+import org.jasig.cas.authentication.HandlerResult;
 import org.jasig.cas.authentication.principal.Service;
+import org.jasig.cas.ticket.TicketCreationException;
 import org.jasig.cas.ticket.TicketException;
+import org.jasig.cas.ticket.TicketGrantingTicket;
+import org.jasig.cas.ticket.registry.TicketRegistry;
 import org.jasig.cas.web.bind.CredentialsBinder;
 import org.jasig.cas.web.support.WebUtils;
 import org.slf4j.Logger;
@@ -35,18 +41,34 @@ import org.springframework.binding.message.MessageBuilder;
 import org.springframework.binding.message.MessageContext;
 import org.springframework.util.StringUtils;
 import org.springframework.web.util.CookieGenerator;
+import org.springframework.webflow.core.collection.LocalAttributeMap;
+import org.springframework.webflow.execution.Event;
 import org.springframework.webflow.execution.RequestContext;
 
 /**
- * Action to authenticate credentials and retrieve a TicketGrantingTicket for
- * those credentials. If there is a request for renew, then it also generates
+ * Action to authenticate credential and retrieve a TicketGrantingTicket for
+ * those credential. If there is a request for renew, then it also generates
  * the Service Ticket required.
- * 
+ *
  * @author Scott Battaglia
- * @version $Revision$ $Date$
  * @since 3.0.4
  */
 public class AuthenticationViaFormAction {
+
+    /** Authentication success result. */
+    public static final String SUCCESS = "success";
+
+    /** Authentication succeeded with warnings from authn subsystem that should be displayed to user. */
+    public static final String SUCCESS_WITH_WARNINGS = "successWithWarnings";
+
+    /** Authentication success with "warn" enabled. */
+    public static final String WARN = "warn";
+
+    /** Authentication failure result. */
+    public static final String AUTHENTICATION_FAILURE = "authenticationFailure";
+
+    /** Error result. */
+    public static final String ERROR = "error";
 
     /**
      * Binder that allows additional binding of form object beyond Spring
@@ -58,72 +80,78 @@ public class AuthenticationViaFormAction {
     @NotNull
     private CentralAuthenticationService centralAuthenticationService;
 
+    /** Ticket registry used to retrieve tickets by ID. */
+    @NotNull
+    private TicketRegistry ticketRegistry;
+
     @NotNull
     private CookieGenerator warnCookieGenerator;
 
-    protected Logger logger = LoggerFactory.getLogger(getClass());
+    /** Flag indicating whether message context contains warning messages. */
+    private boolean hasWarningMessages;
 
-    public final void doBind(final RequestContext context, final Credentials credentials) throws Exception {
+    /** Logger instance. **/
+    protected final Logger logger = LoggerFactory.getLogger(getClass());
+
+    public final void doBind(final RequestContext context, final Credential credential) throws Exception {
         final HttpServletRequest request = WebUtils.getHttpServletRequest(context);
 
-        if (this.credentialsBinder != null && this.credentialsBinder.supports(credentials.getClass())) {
-            this.credentialsBinder.bind(request, credentials);
+        if (this.credentialsBinder != null && this.credentialsBinder.supports(credential.getClass())) {
+            this.credentialsBinder.bind(request, credential);
         }
     }
-    
-    public final String submit(final RequestContext context, final Credentials credentials, final MessageContext messageContext) throws Exception {
+    public final Event submit(final RequestContext context, final Credential credential,
+            final MessageContext messageContext) throws Exception {
         // Validate login ticket
         final String authoritativeLoginTicket = WebUtils.getLoginTicketFromFlowScope(context);
         final String providedLoginTicket = WebUtils.getLoginTicketFromRequest(context);
         if (!authoritativeLoginTicket.equals(providedLoginTicket)) {
-            this.logger.warn("Invalid login ticket " + providedLoginTicket);
-            final String code = "INVALID_TICKET";
-            messageContext.addMessage(
-                new MessageBuilder().error().code(code).arg(providedLoginTicket).defaultText(code).build());
-            return "error";
+            logger.warn("Invalid login ticket {}", providedLoginTicket);
+            messageContext.addMessage(new MessageBuilder().code("error.invalid.loginticket").build());
+            return newEvent(ERROR);
         }
 
         final String ticketGrantingTicketId = WebUtils.getTicketGrantingTicketId(context);
         final Service service = WebUtils.getService(context);
-        if (StringUtils.hasText(context.getRequestParameters().get("renew")) && ticketGrantingTicketId != null && service != null) {
+        if (StringUtils.hasText(context.getRequestParameters().get("renew")) && ticketGrantingTicketId != null
+                && service != null) {
 
             try {
-                final String serviceTicketId = this.centralAuthenticationService.grantServiceTicket(ticketGrantingTicketId, service, credentials);
+                final String serviceTicketId = this.centralAuthenticationService.grantServiceTicket(
+                        ticketGrantingTicketId, service, credential);
                 WebUtils.putServiceTicketInRequestScope(context, serviceTicketId);
                 putWarnCookieIfRequestParameterPresent(context);
-                return "warn";
-            } catch (final TicketException e) {
-                if (isCauseAuthenticationException(e)) {
-                    populateErrorsInstance(e, messageContext);
-                    return getAuthenticationExceptionEventId(e);
-                }
-                
+                return newEvent(WARN);
+            } catch (final AuthenticationException e) {
+                return newEvent(AUTHENTICATION_FAILURE, e);
+            } catch (final TicketCreationException e) {
+                logger.warn(
+                        "Invalid attempt to access service using renew=true with different credential. "
+                        + "Ending SSO session.");
                 this.centralAuthenticationService.destroyTicketGrantingTicket(ticketGrantingTicketId);
-                if (logger.isDebugEnabled()) {
-                    logger.debug("Attempted to generate a ServiceTicket using renew=true with different credentials", e);
-                }
+            } catch (final TicketException e) {
+                return newEvent(ERROR, e);
             }
         }
 
         try {
-            WebUtils.putTicketGrantingTicketInRequestScope(context, this.centralAuthenticationService.createTicketGrantingTicket(credentials));
+            final String tgtId = this.centralAuthenticationService.createTicketGrantingTicket(credential);
+            WebUtils.putTicketGrantingTicketInFlowScope(context, tgtId);
             putWarnCookieIfRequestParameterPresent(context);
-            return "success";
-        } catch (final TicketException e) {
-            populateErrorsInstance(e, messageContext);
-            if (isCauseAuthenticationException(e))
-                return getAuthenticationExceptionEventId(e);
-            return "error";
-        }
-    }
-
-
-    private void populateErrorsInstance(final TicketException e, final MessageContext messageContext) {
-
-        try {
-            messageContext.addMessage(new MessageBuilder().error().code(e.getCode()).defaultText(e.getCode()).build());
-        } catch (final Exception fe) {
-            logger.error(fe.getMessage(), fe);
+            final TicketGrantingTicket tgt = (TicketGrantingTicket) this.ticketRegistry.getTicket(tgtId);
+            for (final Map.Entry<String, HandlerResult> entry : tgt.getAuthentication().getSuccesses().entrySet()) {
+                for (final Message message : entry.getValue().getWarnings()) {
+                    addWarningToContext(messageContext, message);
+                }
+            }
+            if (this.hasWarningMessages) {
+                return newEvent(SUCCESS_WITH_WARNINGS);
+            }
+            return newEvent(SUCCESS);
+        } catch (final AuthenticationException e) {
+            return newEvent(AUTHENTICATION_FAILURE, e);
+        } catch (final Exception e) {
+            return newEvent(ERROR, e);
         }
     }
 
@@ -136,48 +164,63 @@ public class AuthenticationViaFormAction {
             this.warnCookieGenerator.removeCookie(response);
         }
     }
-    
+
     private AuthenticationException getAuthenticationExceptionAsCause(final TicketException e) {
         return (AuthenticationException) e.getCause();
     }
 
-    private String getAuthenticationExceptionEventId(final TicketException e) {
-        final AuthenticationException authEx = getAuthenticationExceptionAsCause(e);
-
-        if (this.logger.isDebugEnabled())
-            this.logger.debug("An authentication error has occurred. Returning the event id " + authEx.getType());
-
-        return authEx.getType();
+    private Event newEvent(final String id) {
+        return new Event(this, id);
     }
 
-    private boolean isCauseAuthenticationException(final TicketException e) {
-        return e.getCause() != null && AuthenticationException.class.isAssignableFrom(e.getCause().getClass());
+    private Event newEvent(final String id, final Exception error) {
+        return new Event(this, id, new LocalAttributeMap("error", error));
     }
 
     public final void setCentralAuthenticationService(final CentralAuthenticationService centralAuthenticationService) {
         this.centralAuthenticationService = centralAuthenticationService;
     }
 
+    public void setTicketRegistry(final TicketRegistry ticketRegistry) {
+        this.ticketRegistry = ticketRegistry;
+    }
+
     /**
      * Set a CredentialsBinder for additional binding of the HttpServletRequest
-     * to the Credentials instance, beyond our default binding of the
-     * Credentials as a Form Object in Spring WebMVC parlance. By the time we
+     * to the Credential instance, beyond our default binding of the
+     * Credential as a Form Object in Spring WebMVC parlance. By the time we
      * invoke this CredentialsBinder, we have already engaged in default binding
      * such that for each HttpServletRequest parameter, if there was a JavaBean
-     * property of the Credentials implementation of the same name, we have set
+     * property of the Credential implementation of the same name, we have set
      * that property to be the value of the corresponding request parameter.
      * This CredentialsBinder plugin point exists to allow consideration of
      * things other than HttpServletRequest parameters in populating the
-     * Credentials (or more sophisticated consideration of the
+     * Credential (or more sophisticated consideration of the
      * HttpServletRequest parameters).
      *
-     * @param credentialsBinder the credentials binder to set.
+     * @param credentialsBinder the credential binder to set.
      */
     public final void setCredentialsBinder(final CredentialsBinder credentialsBinder) {
         this.credentialsBinder = credentialsBinder;
     }
-    
+
     public final void setWarnCookieGenerator(final CookieGenerator warnCookieGenerator) {
         this.warnCookieGenerator = warnCookieGenerator;
+    }
+
+    /**
+     * Adds a warning message to the message context.
+     *
+     * @param context Message context.
+     * @param warning Warning message.
+     */
+    private void addWarningToContext(final MessageContext context, final Message warning) {
+        final MessageBuilder builder = new MessageBuilder()
+                .warning()
+                .code(warning.getCode())
+                .defaultText(warning.getDefaultMessage())
+                .args(warning.getParams());
+        context.addMessage(builder.build());
+        this.hasWarningMessages = true;
     }
 }

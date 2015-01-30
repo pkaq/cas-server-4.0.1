@@ -42,7 +42,7 @@ public class SessionMonitor implements Monitor<SessionStatus> {
 
     /**
      * Sets the ticket registry that exposes state information that may be queried by this monitor.
-     * @param state
+     * @param state the ticket registry state instance
      */
     public void setTicketRegistry(final TicketRegistryState state) {
         this.registryState = state;
@@ -70,24 +70,26 @@ public class SessionMonitor implements Monitor<SessionStatus> {
 
 
     /** {@inheritDoc} */
+    @Override
     public String getName() {
         return SessionMonitor.class.getSimpleName();
     }
 
 
     /** {@inheritDoc} */
+    @Override
     public SessionStatus observe() {
         try {
             final int sessionCount = this.registryState.sessionCount();
             final int ticketCount = this.registryState.serviceTicketCount();
-            
+
             if (sessionCount == Integer.MIN_VALUE || ticketCount == Integer.MIN_VALUE) {
-                return new SessionStatus(StatusCode.UNKNOWN, 
-                                         String.format("Ticket registry %s reports unknown session and/or ticket counts.", 
+                return new SessionStatus(StatusCode.UNKNOWN,
+                                         String.format("Ticket registry %s reports unknown session and/or ticket counts.",
                                          this.registryState.getClass().getName()),
                                          sessionCount, ticketCount);
             }
-            
+
             final StringBuilder msg = new StringBuilder();
             StatusCode code = StatusCode.OK;
             if (this.sessionCountWarnThreshold > -1 && sessionCount > this.sessionCountWarnThreshold) {

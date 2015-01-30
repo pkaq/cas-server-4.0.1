@@ -1,0 +1,9 @@
+
+description = 'Jasig CAS JBoss Cache Integration'
+dependencies {
+  compile project(':cas-server-core')
+  compile('org.jboss.cache:jbosscache-core:2.2.2.GA') {
+	exclude(module: 'commons-logging')
+  }
+  testCompile project(':cas-server-core')
+}

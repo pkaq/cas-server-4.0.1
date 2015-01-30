@@ -26,14 +26,15 @@ import org.springframework.jmx.export.annotation.ManagedResource;
 /**
  * Provides capabilities to reload a {@link org.jasig.cas.services.ReloadableServicesManager} from JMX.
  * <p>
- * You should only expose either this class or the {@link org.jasig.cas.services.jmx.ServicesManagerMBean}, but not both.
+ * You should only expose either this class or
+ * the {@link org.jasig.cas.services.jmx.ServicesManagerMBean}, but not both.
  *
  * @author Scott Battaglia
- * @version $Revision$ $Date$
+
  * @since 3.4.4
  */
 @ManagedResource(objectName = "CAS:name=JasigCasServicesManagerMBean",
-        description = "Exposes the services management tool via JMX", log = true, logFile="jasig_cas_jmx.log",
+        description = "Exposes the services management tool via JMX", log = true, logFile="jasig_cas_jmx.logger",
         currencyTimeLimit = 15)
 public final class ReloadableServicesManagerMBean extends AbstractServicesManagerMBean<ReloadableServicesManager> {
 

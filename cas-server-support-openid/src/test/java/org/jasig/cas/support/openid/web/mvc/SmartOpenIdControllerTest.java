@@ -19,7 +19,10 @@
 
 package org.jasig.cas.support.openid.web.mvc;
 
-import junit.framework.TestCase;
+import static org.junit.Assert.*;
+
+import org.junit.Before;
+import org.junit.Test;
 import org.openid4java.server.ServerManager;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -33,13 +36,13 @@ import java.util.Map;
  * Test case of the Smart OpenId Controller.
  * @author Frederic Esnault
  */
-public class SmartOpenIdControllerTest extends TestCase {
+public class SmartOpenIdControllerTest {
     private final MockHttpServletRequest request = new MockHttpServletRequest();
     private final HttpServletResponse response = new MockHttpServletResponse();
     private ServerManager manager;
     private final SmartOpenIdController smartOpenIdController = new SmartOpenIdController();
 
-    @Override
+    @Before
     public void setUp() {
         manager = new ServerManager();
         manager.setOPEndpointUrl("https://localshot:8443/cas/login");
@@ -47,6 +50,7 @@ public class SmartOpenIdControllerTest extends TestCase {
         smartOpenIdController.setServerManager(manager);
     }
 
+    @Test
     public void testCanHandle() {
         request.addParameter("openid.mode", "associate");
         boolean canHandle = smartOpenIdController.canHandle(request, response);
@@ -54,6 +58,7 @@ public class SmartOpenIdControllerTest extends TestCase {
         assertEquals(true, canHandle);
     }
 
+    @Test
     public void testCannotHandle() {
         request.addParameter("openid.mode", "anythingElse");
         boolean canHandle = smartOpenIdController.canHandle(request, response);
@@ -61,11 +66,14 @@ public class SmartOpenIdControllerTest extends TestCase {
         assertEquals(false, canHandle);
     }
 
+    @Test
     public void testGetAssociationResponse() {
         request.addParameter("openid.mode", "associate");
-        request.addParameter("openid.session_type","DH-SHA1");
-        request.addParameter("openid.assoc_type","HMAC-SHA1");
-        request.addParameter("openid.dh_consumer_public","NzKoFMyrzFn/5iJFPdX6MVvNA/BChV1/sJdnYbupDn7ptn+cerwEzyFfWFx25KsoLSkxQCaSMmYtc1GPy/2GI1BSKSDhpdJmDBbQRa/9Gs+giV/5fHcz/mHz8sREc7RTGI+0Ka9230arwrWt0fnoaJLRKEGUsmFR71rCo4EUOew=");
+        request.addParameter("openid.session_type", "DH-SHA1");
+        request.addParameter("openid.assoc_type", "HMAC-SHA1");
+        request.addParameter("openid.dh_consumer_public",
+                "NzKoFMyrzFn/5iJFPdX6MVvNA/BChV1/sJdnYbupDn7ptn+cerwEzyFfWFx25KsoLSkxQCaSMmYtc1GPy/2GI1BSKSDhpdJmDBb"
+                + "QRa/9Gs+giV/5fHcz/mHz8sREc7RTGI+0Ka9230arwrWt0fnoaJLRKEGUsmFR71rCo4EUOew=");
         Map<String, String> assocResponse = smartOpenIdController.getAssociationResponse(request);
         assertTrue(assocResponse.containsKey("assoc_handle"));
         assertTrue(assocResponse.containsKey("expires_in"));

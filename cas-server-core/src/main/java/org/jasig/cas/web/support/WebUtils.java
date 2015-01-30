@@ -24,18 +24,21 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.jasig.cas.authentication.principal.WebApplicationService;
+import org.jasig.cas.logout.LogoutRequest;
 import org.springframework.util.Assert;
 import org.springframework.webflow.context.servlet.ServletExternalContext;
 import org.springframework.webflow.execution.RequestContext;
 
 /**
  * Common utilities for the web tier.
- * 
+ *
  * @author Scott Battaglia
- * @version $Revision$ $Date$
+
  * @since 3.1
  */
 public final class WebUtils {
+
+    private WebUtils() {}
 
     /** Request attribute that contains message key describing details of authorization failure.*/
     public static final String CAS_ACCESS_DENIED_REASON = "CAS_ACCESS_DENIED_REASON";
@@ -74,7 +77,7 @@ public final class WebUtils {
 
         return null;
     }
-    
+
     public static WebApplicationService getService(
         final List<ArgumentExtractor> argumentExtractors,
         final RequestContext context) {
@@ -92,11 +95,16 @@ public final class WebUtils {
         context.getRequestScope().put("ticketGrantingTicketId", ticketValue);
     }
 
+    public static void putTicketGrantingTicketInFlowScope(
+        final RequestContext context, final String ticketValue) {
+        context.getFlowScope().put("ticketGrantingTicketId", ticketValue);
+    }
+
     public static String getTicketGrantingTicketId(
         final RequestContext context) {
         final String tgtFromRequest = (String) context.getRequestScope().get("ticketGrantingTicketId");
         final String tgtFromFlow = (String) context.getFlowScope().get("ticketGrantingTicketId");
-        
+
         return tgtFromRequest != null ? tgtFromRequest : tgtFromFlow;
 
     }
@@ -110,19 +118,27 @@ public final class WebUtils {
         final RequestContext context) {
         return context.getRequestScope().getString("serviceTicketId");
     }
-    
+
     public static void putLoginTicket(final RequestContext context, final String ticket) {
         context.getFlowScope().put("loginTicket", ticket);
     }
-    
+
     public static String getLoginTicketFromFlowScope(final RequestContext context) {
         // Getting the saved LT destroys it in support of one-time-use
         // See section 3.5.1 of http://www.jasig.org/cas/protocol
         final String lt = (String) context.getFlowScope().remove("loginTicket");
         return lt != null ? lt : "";
     }
-    
+
     public static String getLoginTicketFromRequest(final RequestContext context) {
        return context.getRequestParameters().get("lt");
+    }
+
+    public static void putLogoutRequests(final RequestContext context, final List<LogoutRequest> requests) {
+        context.getFlowScope().put("logoutRequests", requests);
+    }
+
+    public static List<LogoutRequest> getLogoutRequests(final RequestContext context) {
+        return (List<LogoutRequest>) context.getFlowScope().get("logoutRequests");
     }
 }

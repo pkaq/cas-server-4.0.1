@@ -1,0 +1,11 @@
+description = 'Jasig CAS SPNEGO/NTLM Support'
+dependencies {
+  compile project(':cas-server-core'),
+	     'org.samba.jcifs:jcifs:1.2.25',
+	     'org.samba.jcifs:jcifs-ext:0.9.4'
+    compile('org.springframework.webflow:spring-webflow:2.3.2.RELEASE') {
+		exclude(module: 'commons-logging')
+		exclude(module: 'spring-context')
+		exclude(module: 'spring-web')
+    }
+}

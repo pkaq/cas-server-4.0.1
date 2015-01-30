@@ -38,14 +38,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * JPA 2.0 implementation of an exclusive, non-reintrant lock.
+ * JPA 2.0 implementation of an exclusive, non-reentrant lock.
  *
  * @author Marvin S. Addison
- * @version $Revision: $
  *
  */
 public class JpaLockingStrategy implements LockingStrategy {
-    
+
     /** Default lock timeout is 1 hour. */
     public static final int DEFAULT_LOCK_TIMEOUT = 3600;
 
@@ -65,11 +64,11 @@ public class JpaLockingStrategy implements LockingStrategy {
     @NotNull
     private String applicationId;
 
-    /** Unique identifier that identifies the client using this lock instance */
+    /** Unique identifier that identifies the client using this lock instance. */
     @NotNull
     private String uniqueId;
 
-    /** Amount of time in seconds lock may be held */
+    /** Amount of time in seconds lock may be held. */
     private int lockTimeout = DEFAULT_LOCK_TIMEOUT;
 
 
@@ -106,31 +105,32 @@ public class JpaLockingStrategy implements LockingStrategy {
         }
         this.lockTimeout = seconds;
     }
-    
+
 
     /** {@inheritDoc} */
+    @Override
     @Transactional(readOnly = false)
     public boolean acquire() {
         Lock lock;
         try {
             lock = entityManager.find(Lock.class, applicationId, LockModeType.PESSIMISTIC_WRITE);
-        } catch (PersistenceException e) {
+        } catch (final PersistenceException e) {
             logger.debug("{} failed querying for {} lock.", new Object[] {uniqueId, applicationId, e});
             return false;
         }
-        
+
         boolean result = false;
         if (lock != null) {
-	        final Date expDate = lock.getExpirationDate();
-	        if (lock.getUniqueId() == null) {
-	            // No one currently possesses lock
-	            logger.debug("{} trying to acquire {} lock.", uniqueId, applicationId);
-	            result = acquire(entityManager, lock);
-	        } else if (expDate != null && new Date().after(expDate)) {
-	            // Acquire expired lock regardless of who formerly owned it
-	            logger.debug("{} trying to acquire expired {} lock.", uniqueId, applicationId);
-	            result = acquire(entityManager, lock);
-	        }
+            final Date expDate = lock.getExpirationDate();
+            if (lock.getUniqueId() == null) {
+                // No one currently possesses lock
+                logger.debug("{} trying to acquire {} lock.", uniqueId, applicationId);
+                result = acquire(entityManager, lock);
+            } else if (expDate != null && new Date().after(expDate)) {
+                // Acquire expired lock regardless of who formerly owned it
+                logger.debug("{} trying to acquire expired {} lock.", uniqueId, applicationId);
+                result = acquire(entityManager, lock);
+            }
         } else {
             // First acquisition attempt for this applicationId
             logger.debug("Creating {} lock initially held by {}.", applicationId, uniqueId);
@@ -141,10 +141,11 @@ public class JpaLockingStrategy implements LockingStrategy {
 
 
     /** {@inheritDoc} */
+    @Override
     @Transactional(readOnly = false)
     public void release() {
         final Lock lock = entityManager.find(Lock.class, applicationId, LockModeType.PESSIMISTIC_WRITE);
-      
+
         if (lock == null) {
             return;
         }
@@ -159,8 +160,7 @@ public class JpaLockingStrategy implements LockingStrategy {
             throw new IllegalStateException("Cannot release lock owned by " + owner);
         }
     }
-    
-   
+
     /**
      * Gets the current owner of the lock as determined by querying for
      * uniqueId.
@@ -184,25 +184,25 @@ public class JpaLockingStrategy implements LockingStrategy {
     }
 
 
-    private boolean acquire(final EntityManager em, Lock lock) {
+    private boolean acquire(final EntityManager em, final Lock lock) {
         lock.setUniqueId(uniqueId);
         if (lockTimeout > 0) {
-	        final Calendar cal = Calendar.getInstance();
-	        cal.add(Calendar.SECOND, lockTimeout);
-	        lock.setExpirationDate(cal.getTime());
+            final Calendar cal = Calendar.getInstance();
+            cal.add(Calendar.SECOND, lockTimeout);
+            lock.setExpirationDate(cal.getTime());
         } else {
             lock.setExpirationDate(null);
         }
         boolean success = false;
         try {
             if (lock.getApplicationId() != null) {
-                lock = em.merge(lock);
+                em.merge(lock);
             } else {
                 lock.setApplicationId(applicationId);
                 em.persist(lock);
             }
             success = true;
-        } catch (PersistenceException e) {
+        } catch (final PersistenceException e) {
             success = false;
             if (logger.isDebugEnabled()) {
                 logger.debug("{} could not obtain {} lock.", new Object[] {uniqueId, applicationId, e});
@@ -210,7 +210,7 @@ public class JpaLockingStrategy implements LockingStrategy {
                 logger.info("{} could not obtain {} lock.", uniqueId, applicationId);
             }
         }
-        return success; 
+        return success;
     }
 
 
@@ -218,22 +218,21 @@ public class JpaLockingStrategy implements LockingStrategy {
      * Describes a database lock.
      *
      * @author Marvin S. Addison
-     * @version $Revision: $
      *
      */
     @Entity
     @Table(name = "locks")
     public static class Lock {
-        /** column name that holds application identifier */
+        /** column name that holds application identifier. */
         @Id
         @Column(name="application_id")
         private String applicationId;
-        
-        /** Database column name that holds unique identifier */
+
+        /** Database column name that holds unique identifier. */
         @Column(name="unique_id")
         private String uniqueId;
 
-        /** Database column name that holds expiration date */
+        /** Database column name that holds expiration date. */
         @Temporal(TemporalType.TIMESTAMP)
         @Column(name="expiration_date")
         private Date expirationDate;
@@ -249,7 +248,7 @@ public class JpaLockingStrategy implements LockingStrategy {
         /**
          * @param applicationId the applicationId to set
          */
-        public void setApplicationId(String applicationId) {
+        public void setApplicationId(final String applicationId) {
             this.applicationId = applicationId;
         }
 
@@ -263,7 +262,7 @@ public class JpaLockingStrategy implements LockingStrategy {
         /**
          * @param uniqueId the uniqueId to set
          */
-        public void setUniqueId(String uniqueId) {
+        public void setUniqueId(final String uniqueId) {
             this.uniqueId = uniqueId;
         }
 
@@ -277,7 +276,7 @@ public class JpaLockingStrategy implements LockingStrategy {
         /**
          * @param expirationDate the expirationDate to set
          */
-        public void setExpirationDate(Date expirationDate) {
+        public void setExpirationDate(final Date expirationDate) {
             this.expirationDate = expirationDate;
         }
     }

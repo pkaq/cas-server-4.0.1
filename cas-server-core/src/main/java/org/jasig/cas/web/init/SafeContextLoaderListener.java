@@ -51,15 +51,15 @@ import org.springframework.web.context.ContextLoaderListener;
  * <p>
  * The exception thrown is exposed in the Servlet Context under the key
  * "exceptionCaughtByListener".
- * 
+ *
  * @author Andrew Petro
- * @version $Revision$ $Date$
+
  * @see ContextLoaderListener
  */
 public final class SafeContextLoaderListener implements ServletContextListener {
 
     /** Instance of Commons Logging. */
-    private final Logger log = LoggerFactory.getLogger(getClass());
+    private final Logger logger = LoggerFactory.getLogger(getClass());
 
     /**
      * The name of the ServletContext attribute whereat we will place a List of
@@ -73,7 +73,7 @@ public final class SafeContextLoaderListener implements ServletContextListener {
     public void contextInitialized(final ServletContextEvent sce) {
         try {
             this.delegate.contextInitialized(sce);
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             /*
              * no matter what went wrong, our role is to capture this error and
              * prevent it from blocking initialization of the context. logging
@@ -86,14 +86,10 @@ public final class SafeContextLoaderListener implements ServletContextListener {
                 + "The Spring ContextLoaderListener we wrap threw on contextInitialized.\n"
                 + "But for our having caught this error, the web application context would not have initialized.";
 
-            // log it via Commons Logging
-            log.error(message, t);
+            // logger it via Commons Logging
+            logger.error(message, t);
 
-            // log it to System.err
-            System.err.println(message);
-            t.printStackTrace();
-
-            // log it to the ServletContext
+            // logger it to the ServletContext
             ServletContext context = sce.getServletContext();
             context.log(message, t);
 

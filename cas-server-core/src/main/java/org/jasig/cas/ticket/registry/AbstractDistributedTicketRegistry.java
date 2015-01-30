@@ -19,6 +19,7 @@
 package org.jasig.cas.ticket.registry;
 
 import java.util.List;
+import java.util.Map;
 
 import org.jasig.cas.authentication.Authentication;
 import org.jasig.cas.authentication.principal.Service;
@@ -30,13 +31,13 @@ import org.jasig.cas.ticket.TicketGrantingTicket;
 /**
  * Abstract Implementation that handles some of the commonalities between
  * distributed ticket registries.
- * 
+ *
  * @author Scott Battaglia
- * @version $Revision$ $Date$
+
  * @since 3.1
  */
 public abstract class AbstractDistributedTicketRegistry extends AbstractTicketRegistry {
-    
+
     protected abstract void updateTicket(final Ticket ticket);
 
     protected abstract boolean needsCallback();
@@ -63,7 +64,8 @@ public abstract class AbstractDistributedTicketRegistry extends AbstractTicketRe
 
         private final boolean callback;
 
-        protected TicketDelegator(final AbstractDistributedTicketRegistry ticketRegistry, final T ticket, final boolean callback) {
+        protected TicketDelegator(final AbstractDistributedTicketRegistry ticketRegistry,
+                final T ticket, final boolean callback) {
             this.ticketRegistry = ticketRegistry;
             this.ticket = ticket;
             this.callback = callback;
@@ -98,7 +100,7 @@ public abstract class AbstractDistributedTicketRegistry extends AbstractTicketRe
                 return old;
             }
 
-            return (TicketGrantingTicket) this.ticketRegistry.getTicket(old.getId(), Ticket.class);
+            return this.ticketRegistry.getTicket(old.getId(), Ticket.class);
         }
 
         public final long getCreationTime() {
@@ -120,65 +122,101 @@ public abstract class AbstractDistributedTicketRegistry extends AbstractTicketRe
         }
     }
 
-    private static final class ServiceTicketDelegator extends TicketDelegator<ServiceTicket> implements ServiceTicket {
+    private static final class ServiceTicketDelegator extends TicketDelegator<ServiceTicket>
+                           implements ServiceTicket {
 
         private static final long serialVersionUID = 8160636219307822967L;
 
-        protected ServiceTicketDelegator(final AbstractDistributedTicketRegistry ticketRegistry, final ServiceTicket serviceTicket, final boolean callback) {
+        protected ServiceTicketDelegator(final AbstractDistributedTicketRegistry ticketRegistry,
+                final ServiceTicket serviceTicket, final boolean callback) {
             super(ticketRegistry, serviceTicket, callback);
         }
 
-
+        @Override
         public Service getService() {
             return getTicket().getService();
         }
 
+        @Override
         public boolean isFromNewLogin() {
             return getTicket().isFromNewLogin();
         }
 
+        @Override
         public boolean isValidFor(final Service service) {
             final boolean b = this.getTicket().isValidFor(service);
             updateTicket();
             return b;
         }
 
-        public TicketGrantingTicket grantTicketGrantingTicket(final String id, final Authentication authentication, final ExpirationPolicy expirationPolicy) {
-            final TicketGrantingTicket t = this.getTicket().grantTicketGrantingTicket(id, authentication, expirationPolicy);
+        @Override
+        public TicketGrantingTicket grantTicketGrantingTicket(final String id,
+                final Authentication authentication, final ExpirationPolicy expirationPolicy) {
+            final TicketGrantingTicket t = this.getTicket().grantTicketGrantingTicket(id,
+                    authentication, expirationPolicy);
             updateTicket();
             return t;
         }
     }
 
-    private static final class TicketGrantingTicketDelegator extends TicketDelegator<TicketGrantingTicket> implements TicketGrantingTicket {
+    private static final class TicketGrantingTicketDelegator extends TicketDelegator<TicketGrantingTicket>
+            implements TicketGrantingTicket {
 
-        private static final long serialVersionUID = 3946038899057626741L;
+        private static final long serialVersionUID = 5312560061970601497L;
 
-        protected TicketGrantingTicketDelegator(final AbstractDistributedTicketRegistry ticketRegistry, final TicketGrantingTicket ticketGrantingTicket, final boolean callback) {
+        protected TicketGrantingTicketDelegator(final AbstractDistributedTicketRegistry ticketRegistry,
+                final TicketGrantingTicket ticketGrantingTicket, final boolean callback) {
             super(ticketRegistry, ticketGrantingTicket, callback);
         }
 
+        @Override
         public Authentication getAuthentication() {
             return getTicket().getAuthentication();
         }
 
-        public ServiceTicket grantServiceTicket(final String id, final Service service, final ExpirationPolicy expirationPolicy, final boolean credentialsProvided) {
-            final ServiceTicket t = this.getTicket().grantServiceTicket(id, service, expirationPolicy, credentialsProvided);
+        @Override
+        public List<Authentication> getSupplementalAuthentications() {
+            return getTicket().getSupplementalAuthentications();
+        }
+
+        @Override
+        public ServiceTicket grantServiceTicket(final String id, final Service service,
+                final ExpirationPolicy expirationPolicy, final boolean credentialsProvided) {
+            final ServiceTicket t = this.getTicket().grantServiceTicket(id, service,
+                    expirationPolicy, credentialsProvided);
             updateTicket();
             return t;
         }
 
-        public void expire() {
-            this.getTicket().expire();
+        @Override
+        public void markTicketExpired() {
+            this.getTicket().markTicketExpired();
             updateTicket();
         }
 
+        @Override
         public boolean isRoot() {
             return getTicket().isRoot();
         }
 
+        @Override
+        public TicketGrantingTicket getRoot() {
+            return getTicket().getRoot();
+        }
+
+        @Override
         public List<Authentication> getChainedAuthentications() {
             return getTicket().getChainedAuthentications();
+        }
+
+        @Override
+        public Map<String, Service> getServices() {
+            return this.getTicket().getServices();
+        }
+
+        @Override
+        public void removeAllServices() {
+            this.getTicket().removeAllServices();
         }
     }
 }

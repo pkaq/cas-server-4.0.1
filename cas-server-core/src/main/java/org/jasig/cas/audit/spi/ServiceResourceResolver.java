@@ -24,9 +24,8 @@ import org.jasig.cas.authentication.principal.Service;
 import org.jasig.cas.util.AopUtils;
 
 /**
- * 
+ *
  * @author Scott Battaglia
- * @version $Revision: 1.1 $ $Date: 2005/08/19 18:27:17 $
  * @since 3.1.2
  *
  */
@@ -34,11 +33,11 @@ public final class ServiceResourceResolver implements AuditResourceResolver {
 
     public String[] resolveFrom(final JoinPoint joinPoint, final Object retval) {
         final Service service = (Service) AopUtils.unWrapJoinPoint(joinPoint).getArgs()[1];
-        return new String[] { retval.toString() + " for " + service.getId() };
+        return new String[] {retval.toString() + " for " + service.getId()};
     }
 
     public String[] resolveFrom(final JoinPoint joinPoint, final Exception ex) {
         final Service service = (Service) AopUtils.unWrapJoinPoint(joinPoint).getArgs()[1];
-        return new String[] { service.getId() };
+        return new String[] {service.getId()};
     }
 }

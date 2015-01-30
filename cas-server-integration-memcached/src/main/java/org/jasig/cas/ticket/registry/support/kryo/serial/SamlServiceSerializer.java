@@ -22,20 +22,19 @@ import java.lang.reflect.Constructor;
 import java.nio.ByteBuffer;
 
 import com.esotericsoftware.kryo.Kryo;
-import org.jasig.cas.authentication.principal.SamlService;
+import org.jasig.cas.support.saml.authentication.principal.SamlService;
 import org.jasig.cas.ticket.registry.support.kryo.FieldHelper;
 import org.jasig.cas.util.HttpClient;
+import org.jasig.cas.util.SimpleHttpClient;
 
 /**
  * Serializer for {@link SamlService} class.
  *
  * @author Marvin S. Addison
- * @version $Revision: $
  */
 public final class SamlServiceSerializer extends AbstractWebApplicationServiceSerializer<SamlService> {
-    
     private static final Constructor CONSTRUCTOR;
-    
+
     static {
         try {
             CONSTRUCTOR = SamlService.class.getDeclaredConstructor(
@@ -63,7 +62,7 @@ public final class SamlServiceSerializer extends AbstractWebApplicationServiceSe
 
         final String requestId = kryo.readObject(buffer, String.class);
         try {
-            return (SamlService) CONSTRUCTOR.newInstance(id, originalUrl, artifactId, new HttpClient(), requestId);
+            return (SamlService) CONSTRUCTOR.newInstance(id, originalUrl, artifactId, new SimpleHttpClient(), requestId);
         } catch (final Exception e) {
             throw new IllegalStateException("Error creating SamlService", e);
         }

@@ -25,6 +25,8 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.io.Resource;
 
 
@@ -33,11 +35,13 @@ import org.springframework.core.io.Resource;
  * all requests.  SSL/TLS is not supported.
  *
  * @author Marvin S. Addison
- * @version $Revision$
  * @since 3.4.6
  *
  */
 public class MockWebServer {
+
+    private final Logger logger = LoggerFactory.getLogger(getClass());
+
     /** Request handler. */
     private Worker worker;
 
@@ -56,7 +60,7 @@ public class MockWebServer {
     public MockWebServer(final int port, final Resource resource, final String contentType) {
         try {
             this.worker = new Worker(new ServerSocket(port), resource, contentType);
-        } catch (IOException e) {
+        } catch (final IOException e) {
             throw new RuntimeException("Cannot create Web server", e);
         }
     }
@@ -75,7 +79,7 @@ public class MockWebServer {
         this.worker.stop();
         try {
             this.workerThread.join();
-        } catch (InterruptedException e) {
+        } catch (final InterruptedException e) {
             e.printStackTrace();
         }
     }
@@ -130,34 +134,35 @@ public class MockWebServer {
             this.running = true;
         }
 
+        @Override
         public void run() {
             while (this.running) {
                 try {
                     writeResponse(this.serverSocket.accept());
-                } catch (SocketException se) {
-                    System.out.println("Stopping on socket close.");
+                } catch (final SocketException se) {
+                    logger.debug("Stopping on socket close.");
                     this.running = false;
-                } catch (IOException ioe) {
+                } catch (final IOException ioe) {
                     ioe.printStackTrace();
                 }
             }
         }
-        
+
         public void stop() {
             try {
                 this.serverSocket.close();
-            } catch (IOException e) {
-                // Ignore error on close
+            } catch (final IOException e) {
+                logger.trace("Exception when closing the server socket: {}", e.getMessage());
             }
         }
-        
+
         private void writeResponse(final Socket socket) throws IOException {
             final OutputStream out = socket.getOutputStream();
             out.write(STATUS_LINE.getBytes());
             out.write(header("Content-Length", this.resource.contentLength()));
             out.write(header("Content-Type", this.contentType));
             out.write(SEPARATOR.getBytes());
-           
+
             final byte[] buffer = new byte[BUFFER_SIZE];
             final InputStream in = this.resource.getInputStream();
             int count = 0;
@@ -167,7 +172,7 @@ public class MockWebServer {
             in.close();
             socket.shutdownOutput();
         }
-        
+
         private byte[] header(final String name, final Object value) {
             return String.format("%s: %s\r\n", name, value).getBytes();
         }

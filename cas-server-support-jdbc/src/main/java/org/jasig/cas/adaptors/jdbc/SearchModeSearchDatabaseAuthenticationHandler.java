@@ -18,10 +18,16 @@
  */
 package org.jasig.cas.adaptors.jdbc;
 
-import org.jasig.cas.authentication.handler.AuthenticationException;
-import org.jasig.cas.authentication.principal.UsernamePasswordCredentials;
-import org.springframework.beans.factory.InitializingBean;
+import java.security.GeneralSecurityException;
 
+import org.jasig.cas.authentication.HandlerResult;
+import org.jasig.cas.authentication.PreventedException;
+import org.jasig.cas.authentication.UsernamePasswordCredential;
+import org.jasig.cas.authentication.principal.SimplePrincipal;
+import org.springframework.beans.factory.InitializingBean;
+import org.springframework.dao.DataAccessException;
+
+import javax.security.auth.login.FailedLoginException;
 import javax.validation.constraints.NotNull;
 
 /**
@@ -29,15 +35,16 @@ import javax.validation.constraints.NotNull;
  * database table with the provided encryption technique to see if the user
  * exists. This class defaults to a PasswordTranslator of
  * PlainTextPasswordTranslator.
- * 
+ *
  * @author Scott Battaglia
  * @author Dmitriy Kopylenko
- * @version $Revision$ $Date$
+ * @author Marvin S. Addison
+ *
  * @since 3.0
  */
 
-public class SearchModeSearchDatabaseAuthenticationHandler extends
-    AbstractJdbcUsernamePasswordAuthenticationHandler implements InitializingBean {
+public class SearchModeSearchDatabaseAuthenticationHandler extends AbstractJdbcUsernamePasswordAuthenticationHandler
+        implements InitializingBean {
 
     private static final String SQL_PREFIX = "Select count('x') from ";
 
@@ -52,19 +59,29 @@ public class SearchModeSearchDatabaseAuthenticationHandler extends
 
     private String sql;
 
-    protected final boolean authenticateUsernamePasswordInternal(final UsernamePasswordCredentials credentials) throws AuthenticationException {
-        final String transformedUsername = getPrincipalNameTransformer().transform(credentials.getUsername());
-        final String encyptedPassword = getPasswordEncoder().encode(credentials.getPassword());
+    /** {@inheritDoc} */
+    @Override
+    protected final HandlerResult authenticateUsernamePasswordInternal(final UsernamePasswordCredential credential)
+            throws GeneralSecurityException, PreventedException {
 
-        final int count = getJdbcTemplate().queryForInt(this.sql,
-           transformedUsername, encyptedPassword);
-
-        return count > 0;
+        final String username = credential.getUsername();
+        final String encyptedPassword = getPasswordEncoder().encode(credential.getPassword());
+        final int count;
+        try {
+            count = getJdbcTemplate().queryForObject(this.sql, Integer.class, username, encyptedPassword);
+        } catch (final DataAccessException e) {
+            throw new PreventedException("SQL exception while executing query for " + username, e);
+        }
+        if (count == 0) {
+            throw new FailedLoginException(username + " not found with SQL query.");
+        }
+        return createHandlerResult(credential, new SimplePrincipal(username), null);
     }
 
+    @Override
     public void afterPropertiesSet() throws Exception {
-        this.sql = SQL_PREFIX + this.tableUsers + " Where " + this.fieldUser
-        + " = ? And " + this.fieldPassword + " = ?"; 
+        this.sql = SQL_PREFIX + this.tableUsers + " WHERE " + this.fieldUser + " = ? AND " + this.fieldPassword
+                + " = ?";
     }
 
     /**

@@ -18,26 +18,28 @@
  */
 package org.jasig.cas.adaptors.generic;
 
+import static org.junit.Assert.*;
+
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.jasig.cas.adaptors.generic.RejectUsersAuthenticationHandler;
-import org.jasig.cas.authentication.handler.AuthenticationException;
-import org.jasig.cas.authentication.principal.HttpBasedServiceCredentials;
-import org.jasig.cas.authentication.principal.UsernamePasswordCredentials;
-import junit.framework.TestCase;
+import javax.security.auth.login.AccountNotFoundException;
+import javax.security.auth.login.FailedLoginException;
+
+import org.jasig.cas.authentication.UsernamePasswordCredential;
+import org.jasig.cas.authentication.HttpBasedServiceCredential;
+import org.junit.Test;
 
 /**
  * @author Scott Battaglia
- * @version $Revision$ $Date$
  */
-public class RejectUsersAuthenticationHandlerTests extends TestCase {
+public class RejectUsersAuthenticationHandlerTests {
 
-    final private List<String> users;
+    private final List<String> users;
 
-    final private RejectUsersAuthenticationHandler authenticationHandler;
+    private final RejectUsersAuthenticationHandler authenticationHandler;
 
     public RejectUsersAuthenticationHandlerTests() throws Exception {
         this.users = new ArrayList<String>();
@@ -51,78 +53,57 @@ public class RejectUsersAuthenticationHandlerTests extends TestCase {
         this.authenticationHandler.setUsers(this.users);
     }
 
-    public void testSupportsProperUserCredentials() {
-        UsernamePasswordCredentials c = new UsernamePasswordCredentials();
+    @Test
+    public void testSupportsProperUserCredentials() throws Exception {
+        UsernamePasswordCredential c = new UsernamePasswordCredential();
 
         c.setUsername("fff");
         c.setPassword("rutgers");
-        try {
-            this.authenticationHandler.authenticate(c);
-        } catch (AuthenticationException e) {
-            fail("AuthenticationException caught.");
-        }
+        assertNotNull(this.authenticationHandler.authenticate(c));
     }
 
+    @Test
     public void testDoesntSupportBadUserCredentials() {
         try {
             assertFalse(this.authenticationHandler
-                .supports(new HttpBasedServiceCredentials(new URL(
+                .supports(new HttpBasedServiceCredential(new URL(
                     "http://www.rutgers.edu"))));
-        } catch (MalformedURLException e) {
+        } catch (final MalformedURLException e) {
             fail("Could not resolve URL.");
         }
     }
 
-    public void testFailsUserInMap() {
-        final UsernamePasswordCredentials c = new UsernamePasswordCredentials();
+    @Test(expected=FailedLoginException.class)
+    public void testFailsUserInMap() throws Exception {
+        final UsernamePasswordCredential c = new UsernamePasswordCredential();
 
         c.setUsername("scott");
         c.setPassword("rutgers");
-
-        try {
-            assertFalse(this.authenticationHandler.authenticate(c));
-        } catch (AuthenticationException e) {
-            // fail("AuthenticationException caught but it should not have been
-            // thrown.");
-        }
+        this.authenticationHandler.authenticate(c);
     }
 
-    public void testPassesUserNotInMap() {
-        final UsernamePasswordCredentials c = new UsernamePasswordCredentials();
+    @Test
+    public void testPassesUserNotInMap() throws Exception {
+        final UsernamePasswordCredential c = new UsernamePasswordCredential();
 
         c.setUsername("fds");
         c.setPassword("rutgers");
 
-        try {
-            assertTrue(this.authenticationHandler.authenticate(c));
-        } catch (AuthenticationException e) {
-            fail("Exception thrown but not expected.");
-        }
+        assertNotNull(this.authenticationHandler.authenticate(c));
     }
 
-    public void testFailsNullUserName() {
-        final UsernamePasswordCredentials c = new UsernamePasswordCredentials();
+    @Test(expected = AccountNotFoundException.class)
+    public void testPassesNullUserName() throws Exception {
+        final UsernamePasswordCredential c = new UsernamePasswordCredential();
 
         c.setUsername(null);
         c.setPassword("user");
 
-        try {
-            assertTrue(this.authenticationHandler.authenticate(c));
-        } catch (AuthenticationException e) {
-            fail("Exception expected as null should never be in map.");
-        }
+        this.authenticationHandler.authenticate(c);
     }
 
-    public void testFailsNullUserNameAndPassword() {
-        final UsernamePasswordCredentials c = new UsernamePasswordCredentials();
-
-        c.setUsername(null);
-        c.setPassword(null);
-
-        try {
-            assertTrue(this.authenticationHandler.authenticate(c));
-        } catch (AuthenticationException e) {
-            fail("Exception expected as null should never be in map.");
-        }
+    @Test(expected = AccountNotFoundException.class)
+    public void testPassesNullUserNameAndPassword() throws Exception {
+        this.authenticationHandler.authenticate(new UsernamePasswordCredential());
     }
 }
