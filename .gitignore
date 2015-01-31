@@ -16,3 +16,9 @@ pom.xml.versionsBackup
 *.log
 
 **/.checkstyle
+/cas-server-webapp/build
+/cas-server-webapp-support/build
+/cas-server-support-saml/build
+/cas-server-support-jdbc/build
+/cas-server-support-generic/build
+/cas-server-core/build
