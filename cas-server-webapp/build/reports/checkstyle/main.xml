@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<checkstyle version="5.7">
-<file name="C:\workspaces\sts\cas-server\cas-server-webapp\src\main\java\org\jasig\cas\util\MD5.java">
-</file>
-<file name="C:\workspaces\sts\cas-server\cas-server-webapp\src\main\java\org\jasig\cas\util\MD5Encoder.java">
-</file>
-</checkstyle>
