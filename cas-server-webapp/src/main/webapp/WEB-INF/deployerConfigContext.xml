@@ -89,7 +89,7 @@
 	<bean id="dataSource" class="com.alibaba.druid.pool.DruidDataSource">
 		<property name="username" value="CIMS" />
 		<property name="password" value="CIMS" />
-		<property name="url" value="jdbc:oracle:thin:@172.31.122.40:1521:CIMS" />
+		<property name="url" value="jdbc:oracle:thin:@172.16.9.40:1521:CIMS" />
 		<!-- 配置初始化大小、最小、最大 -->
 		<property name="initialSize" value="10" />
 		<property name="minIdle" value="10" />

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="org.jasig.cas.WiringTests" tests="1" skipped="0" failures="0" errors="0" timestamp="2015-01-30T23:48:25" hostname="Erik" time="8.656">
+  <properties/>
+  <testcase name="testWiring" classname="org.jasig.cas.WiringTests" time="8.656"/>
+  <system-out><![CDATA[2015-01-31 07:48:28,511 INFO [org.jasig.cas.services.DefaultServicesManagerImpl] - <Loaded 1 services.>
+2015-01-31 07:48:33,753 INFO [org.jasig.cas.util.AutowiringSchedulerFactoryBean] - <Starting Quartz Scheduler now>
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
